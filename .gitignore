@@ -5,3 +5,12 @@ dist/
 uploads/
 *.log
 .DS_Store
+
+# Cypress (raiz)
+cypress/downloads/
+cypress/screenshots/
+cypress/videos/
+
+# Testes
+coverage/
+.env.test

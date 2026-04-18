@@ -1,0 +1,16 @@
+{
+  "name": "loja-vera",
+  "private": true,
+  "description": "Monorepo: backend (API), frontend (Vite/React), testes em /tests",
+  "scripts": {
+    "test": "npm run test --prefix backend && npm run test --prefix frontend",
+    "test:backend": "npm run test --prefix backend",
+    "test:frontend": "npm run test --prefix frontend",
+    "test:e2e": "cypress run --config-file cypress.config.ts",
+    "test:e2e:open": "cypress open --config-file cypress.config.ts"
+  },
+  "devDependencies": {
+    "cypress": "^14.2.1",
+    "typescript": "~5.8.3"
+  }
+}
