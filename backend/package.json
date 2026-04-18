@@ -15,7 +15,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "reset:locacoes": "tsx prisma/reset-locacoes.ts"
+    "reset:locacoes": "tsx prisma/reset-locacoes.ts",
+    "reset:movimentacoes": "tsx prisma/reset-movimentacoes.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
