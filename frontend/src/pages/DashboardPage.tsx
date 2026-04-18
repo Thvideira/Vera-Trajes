@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiGet } from "../lib/api";
 import {
-  LABEL_TRAJE_LOCADO_STATUS,
-  badgeClassForTrajeStatus,
   badgeClassPrecisaAjuste,
+  badgeClassTrajeLocadoComContexto,
+  exibirSegundoBadgeAjustePendente,
+  labelTrajeLocadoComContexto,
   type TrajeLocadoStatus,
 } from "../types";
 
@@ -153,13 +154,20 @@ export function DashboardPage() {
                   <td className="p-3">
                     <span className="flex flex-wrap gap-1.5 items-center">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassForTrajeStatus(
-                          a.status
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassTrajeLocadoComContexto(
+                          a.status,
+                          a.precisaAjuste
                         )}`}
                       >
-                        {LABEL_TRAJE_LOCADO_STATUS[a.status] ?? a.status}
+                        {labelTrajeLocadoComContexto(
+                          a.status,
+                          a.precisaAjuste
+                        )}
                       </span>
-                      {a.precisaAjuste && (
+                      {exibirSegundoBadgeAjustePendente(
+                        a.status,
+                        a.precisaAjuste
+                      ) && (
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassPrecisaAjuste()}`}
                         >

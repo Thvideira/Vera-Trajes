@@ -1,7 +1,11 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { AjustesList, type AjustePendenteItem } from "../components/AjustesList";
 import { apiGet, apiSend } from "../lib/api";
-import { LABEL_AJUSTE_TIPO, LABEL_TRAJE_LOCADO_STATUS } from "../types";
+import {
+  LABEL_AJUSTE_TIPO,
+  labelTrajeLocadoComContexto,
+  type TrajeLocadoStatus,
+} from "../types";
 
 type Row = {
   id: string;
@@ -175,10 +179,10 @@ export function AjustesPage() {
                       ).toLocaleString("pt-BR")}
                     </td>
                     <td className="p-3 align-middle text-xs">
-                      {LABEL_TRAJE_LOCADO_STATUS[
-                        first.trajeLocado
-                          .status as keyof typeof LABEL_TRAJE_LOCADO_STATUS
-                      ] ?? first.trajeLocado.status}
+                      {labelTrajeLocadoComContexto(
+                        first.trajeLocado.status as TrajeLocadoStatus,
+                        lista.some((r) => r.status === "PENDENTE")
+                      )}
                     </td>
                     <td className="p-3 align-middle text-center">
                       <span className="inline-flex min-w-[2rem] justify-center rounded-full bg-amber-100 text-amber-950 px-2 py-0.5 text-xs font-semibold tabular-nums">

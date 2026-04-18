@@ -5,9 +5,10 @@ import { apiGet, apiSend } from "../lib/api";
 import { subscribeTrajeCatalogLive } from "../lib/trajesCatalog";
 import {
   LABEL_RETIRADA_STATUS,
-  LABEL_TRAJE_LOCADO_STATUS,
-  badgeClassForTrajeStatus,
   badgeClassPrecisaAjuste,
+  badgeClassTrajeLocadoComContexto,
+  exibirSegundoBadgeAjustePendente,
+  labelTrajeLocadoComContexto,
   type TrajeLocadoStatus,
 } from "../types";
 import type { Cliente } from "./ClientesPage";
@@ -109,13 +110,14 @@ function TrajeThumb({
         </p>
         <div className="mt-1 flex flex-wrap gap-1.5 items-center">
           <span
-            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassForTrajeStatus(
-              status
+            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassTrajeLocadoComContexto(
+              status,
+              precisaAjuste
             )}`}
           >
-            {LABEL_TRAJE_LOCADO_STATUS[status]}
+            {labelTrajeLocadoComContexto(status, precisaAjuste)}
           </span>
-          {precisaAjuste ? (
+          {exibirSegundoBadgeAjustePendente(status, precisaAjuste) ? (
             <span
               className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassPrecisaAjuste()}`}
             >

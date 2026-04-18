@@ -3,9 +3,10 @@ import { Link, useParams } from "react-router-dom";
 import { apiGet } from "../lib/api";
 import {
   LABEL_RETIRADA_STATUS,
-  LABEL_TRAJE_LOCADO_STATUS,
-  badgeClassForTrajeStatus,
   badgeClassPrecisaAjuste,
+  badgeClassTrajeLocadoComContexto,
+  exibirSegundoBadgeAjustePendente,
+  labelTrajeLocadoComContexto,
   type TrajeLocadoStatus,
 } from "../types";
 
@@ -210,13 +211,20 @@ export function FinanceiroLocacaoDetalhePage() {
                     </p>
                     <span className="mt-1 flex flex-wrap gap-1.5 items-center">
                       <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassForTrajeStatus(
-                          t.status
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassTrajeLocadoComContexto(
+                          t.status,
+                          t.precisaAjuste
                         )}`}
                       >
-                        {LABEL_TRAJE_LOCADO_STATUS[t.status]}
+                        {labelTrajeLocadoComContexto(
+                          t.status,
+                          t.precisaAjuste
+                        )}
                       </span>
-                      {t.precisaAjuste && (
+                      {exibirSegundoBadgeAjustePendente(
+                        t.status,
+                        t.precisaAjuste
+                      ) && (
                         <span
                           className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassPrecisaAjuste()}`}
                         >

@@ -47,6 +47,50 @@ export const LABEL_AJUSTE_TIPO: Record<AjusteTipo, string> = {
   OUTROS: "Outros",
 };
 
+/**
+ * `PRONTO` no banco com `precisaAjuste` ainda não significa “disponível para retirada”
+ * (cadastro / antes de enviar à costureira). Nesse caso não exibimos o rótulo “Pronto”.
+ */
+export function trajeLocadoNaoProntoParaExibir(
+  status: TrajeLocadoStatus,
+  precisaAjuste: boolean | undefined
+): boolean {
+  return status === "PRONTO" && Boolean(precisaAjuste);
+}
+
+/** Rótulo principal do traje (status + contexto de ajuste). */
+export function labelTrajeLocadoComContexto(
+  status: TrajeLocadoStatus,
+  precisaAjuste: boolean | undefined
+): string {
+  if (trajeLocadoNaoProntoParaExibir(status, precisaAjuste)) {
+    return "Aguardando ajuste";
+  }
+  return LABEL_TRAJE_LOCADO_STATUS[status];
+}
+
+/** Classes do badge principal (âmbar na fase “aguardando ajuste”, não verde “Pronto”). */
+export function badgeClassTrajeLocadoComContexto(
+  status: TrajeLocadoStatus,
+  precisaAjuste: boolean | undefined
+): string {
+  if (trajeLocadoNaoProntoParaExibir(status, precisaAjuste)) {
+    return "bg-amber-100 text-amber-950 border border-amber-200";
+  }
+  return badgeClassForTrajeStatus(status);
+}
+
+/**
+ * Segundo badge “Ajuste pendente” só quando o status já é outro (ex.: Costureira),
+ * para não duplicar informação com “Aguardando ajuste”.
+ */
+export function exibirSegundoBadgeAjustePendente(
+  status: TrajeLocadoStatus,
+  precisaAjuste: boolean | undefined
+): boolean {
+  return Boolean(precisaAjuste) && !trajeLocadoNaoProntoParaExibir(status, precisaAjuste);
+}
+
 /** Badge do status operacional do traje locado (fluxo sequencial). */
 export function badgeClassForTrajeStatus(s: TrajeLocadoStatus): string {
   if (s === "COSTUREIRA") {
