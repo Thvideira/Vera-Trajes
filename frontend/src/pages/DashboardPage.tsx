@@ -1,0 +1,195 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { apiGet } from "../lib/api";
+import {
+  LABEL_TRAJE_LOCADO_STATUS,
+  type TrajeLocadoStatus,
+} from "../types";
+
+type Alerta = {
+  id: string;
+  status: TrajeLocadoStatus;
+  clienteNome: string;
+  trajeNome: string;
+  trajeCodigo: string;
+  trajeFotoUrl?: string | null;
+  dataRetirada: string;
+  precisaLavagem: boolean;
+  lavagemStatus: string;
+};
+
+type LocProx = {
+  id: string;
+  cliente: { nome: string };
+  retiradas: { id: string; dataRetirada: string }[];
+};
+
+type Dash = {
+  trajesDisponiveis: number;
+  trajesAlugados: number;
+  ajustesPendentes: number;
+  valoresAReceber: number;
+  locacoesProximas: LocProx[];
+  alertasInteligentes: Alerta[];
+};
+
+export function DashboardPage() {
+  const [data, setData] = useState<Dash | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiGet<Dash>("/api/dashboard")
+      .then(setData)
+      .catch((e: Error) => setErr(e.message));
+  }, []);
+
+  if (err) {
+    return (
+      <p className="text-red-600">
+        {err}{" "}
+        <Link to="/login" className="underline text-vera-700">
+          Fazer login
+        </Link>
+      </p>
+    );
+  }
+  if (!data) {
+    return <p className="text-slate-500">Carregando…</p>;
+  }
+
+  const cards = [
+    { label: "Trajes disponíveis", value: data.trajesDisponiveis },
+    { label: "Trajes alugados", value: data.trajesAlugados },
+    { label: "Ajustes pendentes", value: data.ajustesPendentes },
+    {
+      label: "A receber (R$)",
+      value: data.valoresAReceber.toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+      }),
+    },
+  ];
+
+  const linhasProximas = data.locacoesProximas.flatMap((loc) =>
+    (loc.retiradas ?? []).map((r) => ({
+      key: `${loc.id}-${r.id}`,
+      cliente: loc.cliente.nome,
+      dataRetirada: r.dataRetirada,
+    }))
+  );
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <p className="text-slate-600 mt-1">
+          Resumo da operação, alertas e retiradas previstas
+        </p>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map((c) => (
+          <div key={c.label} className="card-dashboard">
+            <p className="text-sm text-slate-500">{c.label}</p>
+            <p className="text-2xl font-semibold mt-1 tabular-nums text-slate-900">
+              {c.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <section>
+        <h2 className="text-lg font-semibold text-slate-900 mb-1">
+          Alertas — retirada em até 2 dias
+        </h2>
+        <p className="text-sm text-slate-600 mb-3">
+          Apenas trajes ainda não prontos, com ajuste ou lavagem pendente.
+        </p>
+        <div className="overflow-x-auto rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 to-white shadow-md">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b border-amber-200 text-left bg-amber-100/50">
+                <th className="p-3 w-16"></th>
+                <th className="p-3">Cliente</th>
+                <th className="p-3">Traje</th>
+                <th className="p-3">Retirada</th>
+                <th className="p-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.alertasInteligentes.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-4 text-slate-600">
+                    Nenhum alerta no período.
+                  </td>
+                </tr>
+              )}
+              {data.alertasInteligentes.map((a) => (
+                <tr key={a.id} className="border-b border-amber-100/80">
+                  <td className="p-2 pl-3">
+                    <div className="h-12 w-12 rounded-lg border border-amber-200/80 bg-white overflow-hidden flex items-center justify-center shrink-0">
+                      {a.trajeFotoUrl ? (
+                        <img
+                          src={a.trajeFotoUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-[9px] text-amber-800/60 px-0.5 text-center leading-tight">
+                          Sem foto
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-3">{a.clienteNome}</td>
+                  <td className="p-3">
+                    <span className="font-medium">{a.trajeNome}</span>
+                    <span className="text-slate-500"> ({a.trajeCodigo})</span>
+                  </td>
+                  <td className="p-3 whitespace-nowrap">
+                    {new Date(a.dataRetirada).toLocaleString("pt-BR")}
+                  </td>
+                  <td className="p-3">
+                    <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-white border border-amber-300 text-amber-950">
+                      {LABEL_TRAJE_LOCADO_STATUS[a.status] ?? a.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-slate-900 mb-3">
+          Locações com retirada (7 dias)
+        </h2>
+        <div className="overflow-x-auto rounded-2xl border border-vera-100 bg-white shadow-md">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b border-vera-100 bg-vera-50/80 text-left">
+                <th className="p-3">Cliente</th>
+                <th className="p-3">Retirada</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linhasProximas.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="p-4 text-slate-500">
+                    Nenhuma locação neste período.
+                  </td>
+                </tr>
+              )}
+              {linhasProximas.map((l) => (
+                <tr key={l.key} className="border-b border-vera-50">
+                  <td className="p-3">{l.cliente}</td>
+                  <td className="p-3">
+                    {new Date(l.dataRetirada).toLocaleString("pt-BR")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}

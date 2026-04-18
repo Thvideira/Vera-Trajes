@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: loja-vera-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lojavera
+      POSTGRES_PASSWORD: lojavera_dev
+      POSTGRES_DB: loja_vera
+    ports:
+      - "5432:5432"
+    volumes:
+      - loja_vera_pgdata:/var/lib/postgresql/data
+
+volumes:
+  loja_vera_pgdata:

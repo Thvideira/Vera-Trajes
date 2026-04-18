@@ -1,0 +1,92 @@
+import type { Request, Response } from "express";
+import { requireParam } from "../utils/param.js";
+import {
+  listLocacaoQuerySchema,
+  locacaoCreateSchema,
+  locacaoPatchSchema,
+  pagamentoSchema,
+  relatorioQuerySchema,
+  retiradaAddSchema,
+} from "../validation/schemas.js";
+import * as service from "../services/locacao.service.js";
+
+export async function getList(req: Request, res: Response) {
+  const q = listLocacaoQuerySchema.parse(req.query);
+  const rows = await service.listLocacoes({
+    encerrada: q.encerrada,
+    dataInicio: q.dataInicio,
+    dataFim: q.dataFim,
+    dataEvento: q.dataEvento,
+  });
+  res.json(rows);
+}
+
+export async function getOne(req: Request, res: Response) {
+  const row = await service.getLocacao(requireParam(req.params.id));
+  res.json(row);
+}
+
+export async function getHistorico(req: Request, res: Response) {
+  const rows = await service.listHistorico(requireParam(req.params.id));
+  res.json(rows);
+}
+
+export async function patchLocacao(req: Request, res: Response) {
+  const data = locacaoPatchSchema.parse(req.body);
+  const row = await service.patchLocacao(requireParam(req.params.id), data);
+  res.json(row);
+}
+
+export async function postCreate(req: Request, res: Response) {
+  const data = locacaoCreateSchema.parse(req.body);
+  const row = await service.createLocacao({
+    clienteId: data.clienteId,
+    observacoes: data.observacoes,
+    dataEvento: data.dataEvento ?? null,
+    dataDevolucaoPrevista: data.dataDevolucaoPrevista ?? null,
+    valorTotal: data.valorTotal,
+    valorPagoInicial: data.valorPagoInicial,
+    retiradas: data.retiradas,
+  });
+  res.status(201).json(row);
+}
+
+export async function postRetirada(req: Request, res: Response) {
+  const body = retiradaAddSchema.parse(req.body);
+  const row = await service.addRetirada(requireParam(req.params.id), {
+    dataRetirada: body.dataRetirada,
+    trajes: body.trajes,
+  });
+  res.status(201).json(row);
+}
+
+export async function postPagamento(req: Request, res: Response) {
+  const body = pagamentoSchema.parse(req.body);
+  const row = await service.registrarPagamento(
+    requireParam(req.params.id),
+    body.valor,
+    body.tipo
+  );
+  res.json(row);
+}
+
+export async function getPagamentosPendentes(_req: Request, res: Response) {
+  const rows = await service.listarPagamentosPendentes();
+  res.json(rows);
+}
+
+export async function getRelatorio(req: Request, res: Response) {
+  const q = relatorioQuerySchema.parse(req.query);
+  const row = await service.relatorioFinanceiro({
+    inicio: q.inicio,
+    fim: q.fim,
+  });
+  res.json(row);
+}
+
+export async function getMovimentacoes(req: Request, res: Response) {
+  const trajeId =
+    typeof req.query.trajeId === "string" ? req.query.trajeId : undefined;
+  const rows = await service.listMovimentacoes(trajeId);
+  res.json(rows);
+}

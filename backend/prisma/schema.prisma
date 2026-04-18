@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TrajeTipo {
+  VESTIDO
+  TERNO
+  SAPATO
+  GRAVATA
+  DAMINHA
+}
+
+enum TrajeStatus {
+  DISPONIVEL
+  ALUGADO
+}
+
+enum RetiradaStatus {
+  PENDENTE
+  PRONTO
+  RETIRADO
+}
+
+enum TrajeLocadoStatus {
+  AGUARDANDO_AJUSTE
+  EM_AJUSTE
+  AJUSTADO
+  LAVAGEM_PENDENTE
+  EM_LAVAGEM
+  PRONTO_RETIRADA
+  RETIRADO
+  FINALIZADO
+}
+
+enum LavagemStatus {
+  PENDENTE
+  EM_ANDAMENTO
+  FEITO
+}
+
+enum AjusteTipo {
+  BARRA
+  CINTURA
+  COMPRIMENTO
+  OUTROS
+}
+
+enum AjusteStatus {
+  PENDENTE
+  CONCLUIDO
+}
+
+enum PagamentoLocacaoStatus {
+  PENDENTE
+  PARCIAL
+  PAGO
+}
+
+enum TipoPagamentoRegistro {
+  SINAL
+  PARCIAL
+  FINAL
+}
+
+enum MovimentacaoTipo {
+  SAIDA_ALUGUEL
+  ENTRADA_DEVOLUCAO
+}
+
+enum NotificacaoTipo {
+  CONFIRMACAO_ALUGUEL
+  LEMBRETE_RETIRADA
+  LEMBRETE_EVENTO
+  ATRASO_DEVOLUCAO
+  PAGAMENTO_PENDENTE
+}
+
+enum UserRole {
+  ADMIN
+  MOBILE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  nome         String?
+  role         UserRole @default(ADMIN)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+}
+
+model Cliente {
+  id          String    @id @default(cuid())
+  nome        String
+  telefone    String
+  cpf         String    @unique
+  cep         String
+  logradouro  String
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  uf          String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  locacoes    Locacao[]
+
+  @@index([nome])
+  @@map("clientes")
+}
+
+model Traje {
+  id        String      @id @default(cuid())
+  nome      String
+  tipo      TrajeTipo
+  codigo    String      @unique
+  tamanho   String
+  status    TrajeStatus @default(DISPONIVEL)
+  fotoUrl   String?     @map("foto_url")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  trajesLocados TrajeLocado[]
+  movimentacoes Movimentacao[]
+
+  @@index([tipo])
+  @@index([codigo])
+  @@map("trajes")
+}
+
+model Locacao {
+  id                    String                 @id @default(cuid())
+  clienteId             String                 @map("cliente_id")
+  cliente               Cliente                @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  /// Preenchido automaticamente na criação; não editável manualmente
+  dataAluguel           DateTime               @default(now()) @map("data_aluguel")
+  observacoes           String?
+  dataEvento            DateTime?              @map("data_evento")
+  dataDevolucaoPrevista DateTime?              @map("data_devolucao_prevista")
+  encerrada             Boolean                @default(false)
+  valorTotal            Decimal                @map("valor_total") @db.Decimal(12, 2)
+  valorPago             Decimal                @default(0) @map("valor_pago") @db.Decimal(12, 2)
+  statusPagamento       PagamentoLocacaoStatus @default(PENDENTE) @map("status_pagamento")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  retiradas    Retirada[]
+  pagamentos   Pagamento[]
+  notificacoes NotificacaoEnvio[]
+  movimentacoes Movimentacao[]
+  historico    LocacaoHistorico[]
+
+  @@index([dataAluguel])
+  @@index([encerrada])
+  @@map("locacoes")
+}
+
+model Retirada {
+  id           String         @id @default(cuid())
+  locacaoId    String         @map("locacao_id")
+  locacao      Locacao        @relation(fields: [locacaoId], references: [id], onDelete: Cascade)
+  dataRetirada DateTime       @map("data_retirada")
+  status       RetiradaStatus @default(PENDENTE)
+
+  trajesLocados TrajeLocado[]
+
+  @@index([locacaoId])
+  @@index([dataRetirada])
+  @@map("retiradas")
+}
+
+model TrajeLocado {
+  id             String            @id @default(cuid())
+  retiradaId     String            @map("retirada_id")
+  retirada       Retirada          @relation(fields: [retiradaId], references: [id], onDelete: Cascade)
+  trajeId        String            @map("traje_id")
+  traje          Traje             @relation(fields: [trajeId], references: [id], onDelete: Restrict)
+  status         TrajeLocadoStatus @default(AGUARDANDO_AJUSTE)
+  precisaLavagem Boolean           @default(true) @map("precisa_lavagem")
+  lavagemStatus  LavagemStatus     @default(PENDENTE) @map("lavagem_status")
+
+  ajustes Ajuste[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([retiradaId, trajeId])
+  @@index([trajeId])
+  @@index([status])
+  @@map("trajes_locados")
+}
+
+model Ajuste {
+  id            String       @id @default(cuid())
+  trajeLocadoId String       @map("traje_locado_id")
+  trajeLocado   TrajeLocado  @relation(fields: [trajeLocadoId], references: [id], onDelete: Cascade)
+  tipo          AjusteTipo
+  descricao     String?
+  status        AjusteStatus @default(PENDENTE)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@map("ajustes")
+}
+
+model LocacaoHistorico {
+  id        String   @id @default(cuid())
+  locacaoId String   @map("locacao_id")
+  locacao   Locacao  @relation(fields: [locacaoId], references: [id], onDelete: Cascade)
+  acao      String
+  detalhe   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([locacaoId])
+  @@map("locacao_historico")
+}
+
+model Pagamento {
+  id        String                @id @default(cuid())
+  locacaoId String                @map("locacao_id")
+  locacao   Locacao               @relation(fields: [locacaoId], references: [id], onDelete: Cascade)
+  valor     Decimal               @db.Decimal(12, 2)
+  tipo      TipoPagamentoRegistro
+  createdAt DateTime              @default(now()) @map("created_at")
+
+  @@map("pagamentos")
+}
+
+model Movimentacao {
+  id         String           @id @default(cuid())
+  trajeId    String           @map("traje_id")
+  traje      Traje            @relation(fields: [trajeId], references: [id], onDelete: Cascade)
+  locacaoId  String?          @map("locacao_id")
+  locacao    Locacao?         @relation(fields: [locacaoId], references: [id], onDelete: SetNull)
+  tipo       MovimentacaoTipo
+  observacao String?
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  @@index([trajeId])
+  @@index([createdAt])
+  @@map("movimentacoes")
+}
+
+model NotificacaoEnvio {
+  id          String          @id @default(cuid())
+  locacaoId   String          @map("locacao_id")
+  locacao     Locacao         @relation(fields: [locacaoId], references: [id], onDelete: Cascade)
+  tipo        NotificacaoTipo
+  dataChave   DateTime        @map("data_chave") @db.Date
+  sucesso     Boolean         @default(true)
+  detalheErro String?         @map("detalhe_erro")
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  @@unique([locacaoId, tipo, dataChave])
+  @@map("notificacao_envios")
+}

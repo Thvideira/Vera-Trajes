@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Loja Vera — paleta rosa elegante */
+@theme {
+  --color-vera-50: #fce4ec;
+  --color-vera-100: #f8bbd0;
+  --color-vera-500: #e91e63;
+  --color-vera-700: #ad1457;
+  --color-vera-900: #880e4f;
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+body {
+  @apply bg-vera-50 text-slate-900 antialiased;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-200;
+    background-color: var(--color-vera-500);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-vera-700);
+    @apply shadow-lg;
+  }
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border-2 bg-white px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200;
+    border-color: var(--color-vera-100);
+    color: var(--color-vera-700);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    @apply bg-vera-50 border-vera-100;
+  }
+
+  .card-dashboard {
+    @apply rounded-2xl border border-white/80 bg-white p-5 shadow-md transition-transform duration-300 ease-out;
+  }
+  .card-dashboard:hover {
+    @apply shadow-lg scale-[1.02];
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-vera-500 focus:outline-none focus:ring-2 focus:ring-vera-100;
+  }
+}
