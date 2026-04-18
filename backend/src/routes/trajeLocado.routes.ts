@@ -5,6 +5,10 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 export const trajeLocadoRouter = Router();
 trajeLocadoRouter.patch("/:id", asyncHandler(ctrl.patchTrajeLocado));
 trajeLocadoRouter.delete("/:id", asyncHandler(ctrl.deleteTrajeLocado));
+trajeLocadoRouter.post(
+  "/:id/costureira/encaminhar",
+  asyncHandler(ctrl.postEncaminharCostureira)
+);
 trajeLocadoRouter.post("/:id/encaminhar-lavagem", asyncHandler(ctrl.postEncaminharLavagem));
 trajeLocadoRouter.post("/:id/marcar-pronto", asyncHandler(ctrl.postMarcarPronto));
 trajeLocadoRouter.post("/:id/lavagem/iniciar", asyncHandler(ctrl.postIniciarLavagem));

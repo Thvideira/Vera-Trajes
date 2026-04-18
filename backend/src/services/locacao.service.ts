@@ -17,6 +17,7 @@ import { registrarHistorico } from "./locacaoHistorico.service.js";
 import { sendConfirmacaoAluguel } from "./notificacao.service.js";
 import {
   assertPodeMarcarProntoManual,
+  initialTrajeLocadoState,
   recomputeTrajeLocado,
   syncRetiradaStatus,
 } from "./trajeLocadoWorkflow.service.js";
@@ -225,22 +226,31 @@ export async function createLocacao(input: CreateLocacaoInput) {
             dataRetirada: r.dataRetirada,
             status: RetiradaStatus.PENDENTE,
             trajesLocados: {
-              create: r.trajes.map((row) => ({
-                trajeId: row.trajeId,
-                precisaLavagem: row.precisaLavagem ?? true,
-                lavagemStatus: LavagemStatus.PENDENTE,
-                status: TrajeLocadoStatus.AGUARDANDO_AJUSTE,
-                ajustes:
-                  row.ajustes && row.ajustes.length > 0
-                    ? {
-                        create: row.ajustes.map((a) => ({
-                          tipo: a.tipo,
-                          descricao: a.descricao ?? null,
-                          status: AjusteStatus.PENDENTE,
-                        })),
-                      }
-                    : undefined,
-              })),
+              create: r.trajes.map((row) => {
+                const temAjustes = Boolean(row.ajustes && row.ajustes.length > 0);
+                const precisaLavagem = row.precisaLavagem ?? true;
+                const init = initialTrajeLocadoState({
+                  temAjustesPendentes: temAjustes,
+                  precisaLavagem,
+                });
+                return {
+                  trajeId: row.trajeId,
+                  precisaLavagem,
+                  lavagemStatus: LavagemStatus.PENDENTE,
+                  status: init.status,
+                  precisaAjuste: init.precisaAjuste,
+                  ajustes:
+                    row.ajustes && row.ajustes.length > 0
+                      ? {
+                          create: row.ajustes.map((a) => ({
+                            tipo: a.tipo,
+                            descricao: a.descricao ?? null,
+                            status: AjusteStatus.PENDENTE,
+                          })),
+                        }
+                      : undefined,
+                };
+              }),
             },
           })),
         },
@@ -463,22 +473,31 @@ export async function addRetirada(locacaoId: string, input: RetiradaInput) {
         dataRetirada: input.dataRetirada,
         status: RetiradaStatus.PENDENTE,
         trajesLocados: {
-          create: input.trajes.map((row) => ({
-            trajeId: row.trajeId,
-            precisaLavagem: row.precisaLavagem ?? true,
-            lavagemStatus: LavagemStatus.PENDENTE,
-            status: TrajeLocadoStatus.AGUARDANDO_AJUSTE,
-            ajustes:
-              row.ajustes && row.ajustes.length
-                ? {
-                    create: row.ajustes.map((a) => ({
-                      tipo: a.tipo,
-                      descricao: a.descricao ?? null,
-                      status: AjusteStatus.PENDENTE,
-                    })),
-                  }
-                : undefined,
-          })),
+          create: input.trajes.map((row) => {
+            const temAjustes = Boolean(row.ajustes && row.ajustes.length);
+            const precisaLavagem = row.precisaLavagem ?? true;
+            const init = initialTrajeLocadoState({
+              temAjustesPendentes: temAjustes,
+              precisaLavagem,
+            });
+            return {
+              trajeId: row.trajeId,
+              precisaLavagem,
+              lavagemStatus: LavagemStatus.PENDENTE,
+              status: init.status,
+              precisaAjuste: init.precisaAjuste,
+              ajustes:
+                row.ajustes && row.ajustes.length
+                  ? {
+                      create: row.ajustes.map((a) => ({
+                        tipo: a.tipo,
+                        descricao: a.descricao ?? null,
+                        status: AjusteStatus.PENDENTE,
+                      })),
+                    }
+                  : undefined,
+            };
+          }),
         },
       },
       include: { trajesLocados: true },
@@ -580,13 +599,20 @@ export async function addTrajeLocado(
   }
 
   await prisma.$transaction(async (tx) => {
+    const temAjustes = Boolean(input.ajustes && input.ajustes.length);
+    const precisaLavagem = input.precisaLavagem ?? true;
+    const init = initialTrajeLocadoState({
+      temAjustesPendentes: temAjustes,
+      precisaLavagem,
+    });
     const tl = await tx.trajeLocado.create({
       data: {
         retiradaId,
         trajeId: input.trajeId,
-        precisaLavagem: input.precisaLavagem ?? true,
+        precisaLavagem,
         lavagemStatus: LavagemStatus.PENDENTE,
-        status: TrajeLocadoStatus.AGUARDANDO_AJUSTE,
+        status: init.status,
+        precisaAjuste: init.precisaAjuste,
         ajustes:
           input.ajustes && input.ajustes.length
             ? {
@@ -635,12 +661,12 @@ export async function removeTrajeLocado(trajeLocadoId: string) {
     throw new AppError(400, "Locação encerrada");
   }
   if (
-    tl.status !== TrajeLocadoStatus.AGUARDANDO_AJUSTE &&
-    tl.status !== TrajeLocadoStatus.EM_AJUSTE
+    tl.status !== TrajeLocadoStatus.PRONTO &&
+    tl.status !== TrajeLocadoStatus.COSTUREIRA
   ) {
     throw new AppError(
       400,
-      "Só é possível remover trajes ainda em preparação inicial"
+      "Só é possível remover trajes ainda em preparação inicial (Pronto ou Costureira)"
     );
   }
 
@@ -711,32 +737,46 @@ export async function patchTrajeLocado(
   });
 }
 
-export async function postEnviarParaLavagem(trajeLocadoId: string) {
+/** Envia à costureira: só após ação explícita, com ajustes pendentes. */
+export async function postEnviarParaCostureira(trajeLocadoId: string) {
   const tl = await prisma.trajeLocado.findUnique({
     where: { id: trajeLocadoId },
-    include: { retirada: true },
+    include: { retirada: true, ajustes: true },
   });
   if (!tl) throw new AppError(404, "Traje locado não encontrado");
-  if (tl.status !== TrajeLocadoStatus.AJUSTADO) {
-    throw new AppError(400, "Só é possível após o status Ajustado (costura concluída)");
+  if (tl.status !== TrajeLocadoStatus.PRONTO) {
+    throw new AppError(
+      400,
+      "Só é possível enviar à costureira quando o traje está em “Pronto” (pré-envio)"
+    );
+  }
+  if (!tl.precisaAjuste) {
+    throw new AppError(
+      400,
+      "Não há ajuste pendente marcado para este traje"
+    );
   }
   await prisma.trajeLocado.update({
     where: { id: trajeLocadoId },
-    data: { status: TrajeLocadoStatus.LAVAGEM_PENDENTE },
+    data: { status: TrajeLocadoStatus.COSTUREIRA },
   });
   await registrarHistorico(
     (
       await prisma.retirada.findUniqueOrThrow({ where: { id: tl.retiradaId } })
     ).locacaoId,
-    "Encaminhado para lavagem/passador",
+    "Enviado à costureira",
     { trajeLocadoId }
   );
   await recomputeTrajeLocado(prisma, trajeLocadoId);
-  await syncRetiradaStatus(prisma, tl.retiradaId);
   return prisma.trajeLocado.findUniqueOrThrow({
     where: { id: trajeLocadoId },
     include: { traje: true, ajustes: true },
   });
+}
+
+/** Compatível com clientes antigos: equivalente a iniciar lavagem na etapa LAVANDO. */
+export async function postEnviarParaLavagem(trajeLocadoId: string) {
+  return postIniciarLavagem(trajeLocadoId);
 }
 
 export async function postMarcarProntoRetirada(trajeLocadoId: string) {
@@ -749,13 +789,13 @@ export async function postMarcarProntoRetirada(trajeLocadoId: string) {
 
   await prisma.trajeLocado.update({
     where: { id: trajeLocadoId },
-    data: { status: TrajeLocadoStatus.PRONTO_RETIRADA },
+    data: { status: TrajeLocadoStatus.PRONTO },
   });
   await registrarHistorico(
     (
       await prisma.retirada.findUniqueOrThrow({ where: { id: tl.retiradaId } })
     ).locacaoId,
-    "Marcado como pronto para retirada (manual)",
+    "Passador concluído — pronto para retirada",
     { trajeLocadoId }
   );
   await syncRetiradaStatus(prisma, tl.retiradaId);
@@ -771,6 +811,18 @@ export async function postIniciarLavagem(trajeLocadoId: string) {
     include: { retirada: true },
   });
   if (!tl) throw new AppError(404, "Traje locado não encontrado");
+  if (tl.status !== TrajeLocadoStatus.LAVANDO) {
+    throw new AppError(
+      400,
+      "Iniciar lavagem só é permitido na etapa “Lavando”"
+    );
+  }
+  if (tl.lavagemStatus !== LavagemStatus.PENDENTE) {
+    throw new AppError(
+      400,
+      "A lavagem já foi iniciada ou não se aplica neste estado"
+    );
+  }
   await prisma.trajeLocado.update({
     where: { id: trajeLocadoId },
     data: {
@@ -798,6 +850,15 @@ export async function postConcluirLavagem(trajeLocadoId: string) {
     include: { retirada: true },
   });
   if (!tl) throw new AppError(404, "Traje locado não encontrado");
+  if (tl.status !== TrajeLocadoStatus.LAVANDO) {
+    throw new AppError(400, "Concluir lavagem só na etapa “Lavando”");
+  }
+  if (tl.lavagemStatus !== LavagemStatus.EM_ANDAMENTO) {
+    throw new AppError(
+      400,
+      "É preciso iniciar a lavagem antes de concluí-la"
+    );
+  }
   await prisma.trajeLocado.update({
     where: { id: trajeLocadoId },
     data: { lavagemStatus: LavagemStatus.FEITO },
@@ -823,8 +884,14 @@ export async function postTrajeRetirado(trajeLocadoId: string) {
     include: { retirada: true },
   });
   if (!tl) throw new AppError(404, "Traje locado não encontrado");
-  if (tl.status !== TrajeLocadoStatus.PRONTO_RETIRADA) {
-    throw new AppError(400, "Traje precisa estar pronto para retirada");
+  if (tl.status !== TrajeLocadoStatus.PRONTO) {
+    throw new AppError(400, "Traje precisa estar em “Pronto” para retirada");
+  }
+  if (tl.precisaAjuste) {
+    throw new AppError(
+      400,
+      "Não é possível marcar retirada enquanto houver ajuste pendente ou o traje não tiver concluído o fluxo de preparação"
+    );
   }
   await prisma.trajeLocado.update({
     where: { id: trajeLocadoId },
@@ -861,7 +928,7 @@ export async function postTrajeFinalizado(trajeLocadoId: string) {
   await prisma.$transaction(async (tx) => {
     await tx.trajeLocado.update({
       where: { id: trajeLocadoId },
-      data: { status: TrajeLocadoStatus.FINALIZADO },
+      data: { status: TrajeLocadoStatus.DEVOLUCAO_FEITA },
     });
     await tx.traje.update({
       where: { id: tl.trajeId },
@@ -903,7 +970,7 @@ async function tryEncerrarLocacao(locacaoId: string): Promise<void> {
 
   const all = loc.retiradas.flatMap((r) => r.trajesLocados);
   if (all.length === 0) return;
-  const done = all.every((t) => t.status === TrajeLocadoStatus.FINALIZADO);
+  const done = all.every((t) => t.status === TrajeLocadoStatus.DEVOLUCAO_FEITA);
   if (done) {
     await prisma.locacao.update({
       where: { id: locacaoId },

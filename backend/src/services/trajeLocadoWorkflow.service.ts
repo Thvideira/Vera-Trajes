@@ -17,57 +17,65 @@ type Tx = Omit<
 export type TrajeLocadoComAjustes = {
   id: string;
   status: TrajeLocadoStatus;
+  precisaAjuste: boolean;
   precisaLavagem: boolean;
   lavagemStatus: LavagemStatus;
   ajustes: { status: AjusteStatus }[];
 };
 
-/** Recalcula status operacional (não altera RETIRADO/FINALIZADO). */
-export function computeTrajeLocadoStatus(
+export function derivePrecisaAjuste(
+  ajustes: { status: AjusteStatus }[]
+): boolean {
+  return ajustes.some((a) => a.status === AjusteStatus.PENDENTE);
+}
+
+/** Estado inicial ao criar traje na locação (antes do primeiro recompute). */
+export function initialTrajeLocadoState(input: {
+  temAjustesPendentes: boolean;
+  precisaLavagem: boolean;
+}): { status: TrajeLocadoStatus; precisaAjuste: boolean } {
+  if (input.temAjustesPendentes) {
+    return { status: TrajeLocadoStatus.PRONTO, precisaAjuste: true };
+  }
+  if (input.precisaLavagem) {
+    return { status: TrajeLocadoStatus.LAVANDO, precisaAjuste: false };
+  }
+  return { status: TrajeLocadoStatus.PRONTO, precisaAjuste: false };
+}
+
+/**
+ * Sincroniza `precisaAjuste` e transições automáticas permitidas:
+ * - COSTUREIRA + sem ajustes pendentes → LAVANDO ou PRONTO
+ * - LAVANDO + lavagem FEITA → FALTA_PASSAR (quando precisa lavagem)
+ */
+export function computeTrajeLocadoPatch(
   tl: TrajeLocadoComAjustes
-): TrajeLocadoStatus {
+): { precisaAjuste: boolean; status?: TrajeLocadoStatus } {
+  const precisaAjuste = derivePrecisaAjuste(tl.ajustes);
+
   if (
     tl.status === TrajeLocadoStatus.RETIRADO ||
-    tl.status === TrajeLocadoStatus.FINALIZADO
+    tl.status === TrajeLocadoStatus.DEVOLUCAO_FEITA
   ) {
-    return tl.status;
+    return { precisaAjuste };
   }
 
-  const ajustes = tl.ajustes;
-  const anyPend = ajustes.some((a) => a.status === AjusteStatus.PENDENTE);
-  const allDone =
-    ajustes.length === 0 ||
-    ajustes.every((a) => a.status === AjusteStatus.CONCLUIDO);
-
-  if (anyPend) {
-    const anyOk = ajustes.some((a) => a.status === AjusteStatus.CONCLUIDO);
-    return anyOk
-      ? TrajeLocadoStatus.EM_AJUSTE
-      : TrajeLocadoStatus.AGUARDANDO_AJUSTE;
+  if (tl.status === TrajeLocadoStatus.COSTUREIRA && !precisaAjuste) {
+    if (tl.precisaLavagem) {
+      return { precisaAjuste, status: TrajeLocadoStatus.LAVANDO };
+    }
+    return { precisaAjuste, status: TrajeLocadoStatus.PRONTO };
   }
 
-  if (!allDone) {
-    return TrajeLocadoStatus.AGUARDANDO_AJUSTE;
+  if (
+    tl.status === TrajeLocadoStatus.LAVANDO &&
+    tl.precisaLavagem &&
+    tl.lavagemStatus === LavagemStatus.FEITO
+  ) {
+    return { precisaAjuste, status: TrajeLocadoStatus.FALTA_PASSAR };
   }
 
-  if (!tl.precisaLavagem) {
-    return TrajeLocadoStatus.PRONTO_RETIRADA;
-  }
-
-  if (tl.lavagemStatus === LavagemStatus.FEITO) {
-    return TrajeLocadoStatus.PRONTO_RETIRADA;
-  }
-
-  if (tl.lavagemStatus === LavagemStatus.EM_ANDAMENTO) {
-    return TrajeLocadoStatus.EM_LAVAGEM;
-  }
-
-  /* lavagem PENDENTE: costura concluída — aguardando encaminhar / fila de lavagem */
-  if (tl.status === TrajeLocadoStatus.LAVAGEM_PENDENTE) {
-    return TrajeLocadoStatus.LAVAGEM_PENDENTE;
-  }
-
-  return TrajeLocadoStatus.AJUSTADO;
+  return { precisaAjuste };
 }
 
 export function podeSerProntoRetirada(tl: TrajeLocadoComAjustes): boolean {
@@ -75,7 +83,7 @@ export function podeSerProntoRetirada(tl: TrajeLocadoComAjustes): boolean {
     tl.ajustes.length === 0 ||
     tl.ajustes.every((a) => a.status === AjusteStatus.CONCLUIDO);
   const lavOk = !tl.precisaLavagem || tl.lavagemStatus === LavagemStatus.FEITO;
-  return allDone && lavOk;
+  return allDone && lavOk && tl.status === TrajeLocadoStatus.FALTA_PASSAR;
 }
 
 export async function recomputeTrajeLocado(
@@ -88,18 +96,30 @@ export async function recomputeTrajeLocado(
   });
   if (!tl) return;
 
-  const next = computeTrajeLocadoStatus({
+  const patch = computeTrajeLocadoPatch({
     id: tl.id,
     status: tl.status,
+    precisaAjuste: tl.precisaAjuste,
     precisaLavagem: tl.precisaLavagem,
     lavagemStatus: tl.lavagemStatus,
     ajustes: tl.ajustes.map((a) => ({ status: a.status })),
   });
 
-  if (next !== tl.status) {
+  const data: Prisma.TrajeLocadoUpdateInput = {
+    precisaAjuste: patch.precisaAjuste,
+  };
+  if (patch.status !== undefined && patch.status !== tl.status) {
+    data.status = patch.status;
+  }
+
+  const needsUpdate =
+    patch.precisaAjuste !== tl.precisaAjuste ||
+    (patch.status !== undefined && patch.status !== tl.status);
+
+  if (needsUpdate) {
     await db.trajeLocado.update({
       where: { id: trajeLocadoId },
-      data: { status: next },
+      data,
     });
   }
 
@@ -117,11 +137,12 @@ export async function syncRetiradaStatus(
   if (!ret || ret.trajesLocados.length === 0) return;
 
   const isProntoOuMais = (s: TrajeLocadoStatus) =>
-    s === TrajeLocadoStatus.PRONTO_RETIRADA ||
+    s === TrajeLocadoStatus.PRONTO ||
     s === TrajeLocadoStatus.RETIRADO ||
-    s === TrajeLocadoStatus.FINALIZADO;
+    s === TrajeLocadoStatus.DEVOLUCAO_FEITA;
   const isRetiradoOuFinal = (s: TrajeLocadoStatus) =>
-    s === TrajeLocadoStatus.RETIRADO || s === TrajeLocadoStatus.FINALIZADO;
+    s === TrajeLocadoStatus.RETIRADO ||
+    s === TrajeLocadoStatus.DEVOLUCAO_FEITA;
 
   const prontos = ret.trajesLocados.filter((t) => isProntoOuMais(t.status));
   const retirados = ret.trajesLocados.filter((t) => isRetiradoOuFinal(t.status));
@@ -152,7 +173,7 @@ export async function assertPodeMarcarProntoManual(
   if (!podeSerProntoRetirada(tl)) {
     throw new AppError(
       400,
-      "Só é possível marcar como pronto quando todos os ajustes estiverem concluídos e a lavagem estiver feita (ou não for necessária)"
+      "Só é possível marcar como pronto após a etapa “Falta passar”, com todos os ajustes concluídos e lavagem feita (ou lavagem desmarcada)"
     );
   }
 }

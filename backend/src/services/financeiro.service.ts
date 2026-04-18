@@ -50,6 +50,7 @@ export async function getFinanceiroLocacaoDetalhe(locacaoId: string) {
         codigo: tl.traje.codigo,
         fotoUrl: tl.traje.fotoUrl,
         status: tl.status,
+        precisaAjuste: tl.precisaAjuste,
         precisaLavagem: tl.precisaLavagem,
         lavagemStatus: tl.lavagemStatus,
       })),

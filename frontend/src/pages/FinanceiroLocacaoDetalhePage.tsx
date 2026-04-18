@@ -5,6 +5,7 @@ import {
   LABEL_RETIRADA_STATUS,
   LABEL_TRAJE_LOCADO_STATUS,
   badgeClassForTrajeStatus,
+  badgeClassPrecisaAjuste,
   type TrajeLocadoStatus,
 } from "../types";
 
@@ -32,6 +33,7 @@ type Detalhe = {
       codigo: string;
       fotoUrl: string | null;
       status: TrajeLocadoStatus;
+      precisaAjuste: boolean;
       precisaLavagem: boolean;
       lavagemStatus: string;
     }[];
@@ -206,12 +208,21 @@ export function FinanceiroLocacaoDetalhePage() {
                         ({t.codigo})
                       </span>
                     </p>
-                    <span
-                      className={`inline-block mt-1 rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassForTrajeStatus(
-                        t.status
-                      )}`}
-                    >
-                      {LABEL_TRAJE_LOCADO_STATUS[t.status]}
+                    <span className="mt-1 flex flex-wrap gap-1.5 items-center">
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassForTrajeStatus(
+                          t.status
+                        )}`}
+                      >
+                        {LABEL_TRAJE_LOCADO_STATUS[t.status]}
+                      </span>
+                      {t.precisaAjuste && (
+                        <span
+                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassPrecisaAjuste()}`}
+                        >
+                          Ajuste pendente
+                        </span>
+                      )}
                     </span>
                     <p className="text-xs text-slate-500 mt-2">
                       Lavagem:{" "}

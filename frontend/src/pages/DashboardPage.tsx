@@ -3,12 +3,15 @@ import { Link } from "react-router-dom";
 import { apiGet } from "../lib/api";
 import {
   LABEL_TRAJE_LOCADO_STATUS,
+  badgeClassForTrajeStatus,
+  badgeClassPrecisaAjuste,
   type TrajeLocadoStatus,
 } from "../types";
 
 type Alerta = {
   id: string;
   status: TrajeLocadoStatus;
+  precisaAjuste: boolean;
   clienteNome: string;
   trajeNome: string;
   trajeCodigo: string;
@@ -100,7 +103,8 @@ export function DashboardPage() {
           Alertas — retirada em até 2 dias
         </h2>
         <p className="text-sm text-slate-600 mb-3">
-          Apenas trajes ainda não prontos, com ajuste ou lavagem pendente.
+          Trajes com retirada próxima que ainda precisam de preparação (ajuste
+          pendente, lavagem ou etapas antes de “Pronto”).
         </p>
         <div className="overflow-x-auto rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 to-white shadow-md">
           <table className="min-w-full text-sm">
@@ -147,8 +151,21 @@ export function DashboardPage() {
                     {new Date(a.dataRetirada).toLocaleString("pt-BR")}
                   </td>
                   <td className="p-3">
-                    <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-white border border-amber-300 text-amber-950">
-                      {LABEL_TRAJE_LOCADO_STATUS[a.status] ?? a.status}
+                    <span className="flex flex-wrap gap-1.5 items-center">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassForTrajeStatus(
+                          a.status
+                        )}`}
+                      >
+                        {LABEL_TRAJE_LOCADO_STATUS[a.status] ?? a.status}
+                      </span>
+                      {a.precisaAjuste && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassPrecisaAjuste()}`}
+                        >
+                          Ajuste pendente
+                        </span>
+                      )}
                     </span>
                   </td>
                 </tr>

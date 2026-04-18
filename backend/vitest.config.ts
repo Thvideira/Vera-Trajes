@@ -13,6 +13,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    globalSetup: [path.join(dir, "tests/backend/globalSetup.ts")],
     setupFiles: [path.join(dir, "tests/backend/setup.ts")],
     include: ["tests/backend/**/*.test.ts"],
     testTimeout: 30_000,

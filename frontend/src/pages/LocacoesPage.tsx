@@ -7,6 +7,7 @@ import {
   LABEL_RETIRADA_STATUS,
   LABEL_TRAJE_LOCADO_STATUS,
   badgeClassForTrajeStatus,
+  badgeClassPrecisaAjuste,
   type TrajeLocadoStatus,
 } from "../types";
 import type { Cliente } from "./ClientesPage";
@@ -15,6 +16,7 @@ import type { Traje } from "./TrajesPage";
 type TrajeLocado = {
   id: string;
   status: TrajeLocadoStatus;
+  precisaAjuste: boolean;
   precisaLavagem: boolean;
   lavagemStatus: string;
   traje: Traje;
@@ -70,6 +72,7 @@ function TrajeThumb({
   nome,
   codigo,
   status,
+  precisaAjuste,
   onOpenPreview,
   sizeClass = "h-20 w-20",
 }: {
@@ -77,6 +80,7 @@ function TrajeThumb({
   nome: string;
   codigo: string;
   status: TrajeLocadoStatus;
+  precisaAjuste?: boolean;
   onOpenPreview?: (url: string) => void;
   sizeClass?: string;
 }) {
@@ -103,13 +107,22 @@ function TrajeThumb({
           {nome}{" "}
           <span className="text-slate-500 font-normal">({codigo})</span>
         </p>
-        <span
-          className={`inline-block mt-1 rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassForTrajeStatus(
-            status
-          )}`}
-        >
-          {LABEL_TRAJE_LOCADO_STATUS[status]}
-        </span>
+        <div className="mt-1 flex flex-wrap gap-1.5 items-center">
+          <span
+            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassForTrajeStatus(
+              status
+            )}`}
+          >
+            {LABEL_TRAJE_LOCADO_STATUS[status]}
+          </span>
+          {precisaAjuste ? (
+            <span
+              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassPrecisaAjuste()}`}
+            >
+              Ajuste pendente
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -264,6 +277,7 @@ export function LocacoesPage() {
                               nome={tl.traje.nome}
                               codigo={tl.traje.codigo}
                               status={tl.status}
+                              precisaAjuste={tl.precisaAjuste}
                               onOpenPreview={setFotoModal}
                             />
                           ))
@@ -1040,6 +1054,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                       nome={tl.traje.nome}
                       codigo={tl.traje.codigo}
                       status={tl.status}
+                      precisaAjuste={tl.precisaAjuste}
                       onOpenPreview={setFotoModal}
                     />
                     <p className="text-xs text-slate-500">
@@ -1068,8 +1083,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                   </ul>
                   {!loc.encerrada && (
                     <div className="flex flex-wrap gap-2">
-                      {(tl.status === "AGUARDANDO_AJUSTE" ||
-                        tl.status === "EM_AJUSTE") && (
+                      {(tl.status === "PRONTO" || tl.status === "COSTUREIRA") && (
                         <button
                           type="button"
                           className="btn-secondary text-xs"
@@ -1078,77 +1092,89 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                           Remover traje
                         </button>
                       )}
-                      {tl.status === "AJUSTADO" && (
+                      {tl.status === "PRONTO" && tl.precisaAjuste && (
                         <button
                           type="button"
-                          className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1 text-xs"
+                          className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-900"
                           onClick={() =>
                             void doAction(
-                              `/api/trajes-locados/${tl.id}/encaminhar-lavagem`,
+                              `/api/trajes-locados/${tl.id}/costureira/encaminhar`,
                               "POST"
                             )
                           }
                         >
-                          Encaminhar lavagem
+                          Enviar à costureira
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="rounded-lg border px-3 py-1 text-xs"
-                        onClick={() =>
-                          void doAction(
-                            `/api/trajes-locados/${tl.id}/lavagem/iniciar`,
-                            "POST"
-                          )
-                        }
-                      >
-                        Iniciar lavagem
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg border px-3 py-1 text-xs"
-                        onClick={() =>
-                          void doAction(
-                            `/api/trajes-locados/${tl.id}/lavagem/concluir`,
-                            "POST"
-                          )
-                        }
-                      >
-                        Lavagem feita
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium"
-                        onClick={() =>
-                          void doAction(
-                            `/api/trajes-locados/${tl.id}/marcar-pronto`,
-                            "POST"
-                          )
-                        }
-                      >
-                        Marcar como pronto
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg border px-3 py-1 text-xs"
-                        onClick={() =>
-                          void doAction(`/api/trajes-locados/${tl.id}/retirado`, "POST")
-                        }
-                      >
-                        Retirado
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg border px-3 py-1 text-xs"
-                        onClick={() =>
-                          void doAction(
-                            `/api/trajes-locados/${tl.id}/finalizado`,
-                            "POST"
-                          )
-                        }
-                      >
-                        Finalizar devolução
-                      </button>
+                      {tl.status === "LAVANDO" &&
+                        tl.lavagemStatus === "PENDENTE" && (
+                          <button
+                            type="button"
+                            className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1 text-xs"
+                            onClick={() =>
+                              void doAction(
+                                `/api/trajes-locados/${tl.id}/lavagem/iniciar`,
+                                "POST"
+                              )
+                            }
+                          >
+                            Iniciar lavagem
+                          </button>
+                        )}
+                      {tl.status === "LAVANDO" &&
+                        tl.lavagemStatus === "EM_ANDAMENTO" && (
+                          <button
+                            type="button"
+                            className="rounded-lg border px-3 py-1 text-xs"
+                            onClick={() =>
+                              void doAction(
+                                `/api/trajes-locados/${tl.id}/lavagem/concluir`,
+                                "POST"
+                              )
+                            }
+                          >
+                            Lavagem feita
+                          </button>
+                        )}
+                      {tl.status === "FALTA_PASSAR" && (
+                        <button
+                          type="button"
+                          className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium"
+                          onClick={() =>
+                            void doAction(
+                              `/api/trajes-locados/${tl.id}/marcar-pronto`,
+                              "POST"
+                            )
+                          }
+                        >
+                          Passador OK — pronto para retirada
+                        </button>
+                      )}
+                      {tl.status === "PRONTO" && !tl.precisaAjuste && (
+                        <button
+                          type="button"
+                          className="rounded-lg border px-3 py-1 text-xs"
+                          onClick={() =>
+                            void doAction(`/api/trajes-locados/${tl.id}/retirado`, "POST")
+                          }
+                        >
+                          Retirado
+                        </button>
+                      )}
+                      {tl.status === "RETIRADO" && (
+                        <button
+                          type="button"
+                          className="rounded-lg border px-3 py-1 text-xs"
+                          onClick={() =>
+                            void doAction(
+                              `/api/trajes-locados/${tl.id}/finalizado`,
+                              "POST"
+                            )
+                          }
+                        >
+                          Finalizar devolução
+                        </button>
+                      )}
                     </div>
                   )}
                 </li>

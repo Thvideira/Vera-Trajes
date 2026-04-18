@@ -27,14 +27,12 @@ enum RetiradaStatus {
 }
 
 enum TrajeLocadoStatus {
-  AGUARDANDO_AJUSTE
-  EM_AJUSTE
-  AJUSTADO
-  LAVAGEM_PENDENTE
-  EM_LAVAGEM
-  PRONTO_RETIRADA
+  COSTUREIRA
+  LAVANDO
+  FALTA_PASSAR
+  PRONTO
   RETIRADO
-  FINALIZADO
+  DEVOLUCAO_FEITA
 }
 
 enum LavagemStatus {
@@ -181,7 +179,9 @@ model TrajeLocado {
   retirada       Retirada          @relation(fields: [retiradaId], references: [id], onDelete: Cascade)
   trajeId        String            @map("traje_id")
   traje          Traje             @relation(fields: [trajeId], references: [id], onDelete: Restrict)
-  status         TrajeLocadoStatus @default(AGUARDANDO_AJUSTE)
+  status         TrajeLocadoStatus @default(PRONTO)
+  /// Independente do status: indica ajuste(s) pendente(s) ainda não quitados pela costura.
+  precisaAjuste  Boolean           @default(false) @map("precisa_ajuste")
   precisaLavagem Boolean           @default(true) @map("precisa_lavagem")
   lavagemStatus  LavagemStatus     @default(PENDENTE) @map("lavagem_status")
 

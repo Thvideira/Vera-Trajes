@@ -1,4 +1,9 @@
-import { AjusteStatus, LavagemStatus, TrajeLocadoStatus, TrajeStatus } from "@prisma/client";
+import {
+  AjusteStatus,
+  LavagemStatus,
+  TrajeStatus,
+  type TrajeLocadoStatus,
+} from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { computeRemaining } from "./finance.service.js";
 
@@ -20,12 +25,6 @@ export async function getDashboard() {
   const em7 = new Date(hoje);
   em7.setDate(em7.getDate() + 7);
   const { gte: inicioProx, lte: fimProx } = rangeRetiradaProxima();
-
-  const prontos = [
-    TrajeLocadoStatus.PRONTO_RETIRADA,
-    TrajeLocadoStatus.RETIRADO,
-    TrajeLocadoStatus.FINALIZADO,
-  ];
 
   const [
     disponiveis,
@@ -73,16 +72,23 @@ export async function getDashboard() {
           dataRetirada: { gte: inicioProx, lte: fimProx },
           locacao: { encerrada: false },
         },
-        status: { notIn: prontos },
-        OR: [
-          { ajustes: { some: { status: AjusteStatus.PENDENTE } } },
-          {
-            AND: [
-              { precisaLavagem: true },
-              { lavagemStatus: { not: LavagemStatus.FEITO } },
-            ],
-          },
-        ],
+        status: {
+          // Literais: evitam `undefined` se o client Prisma em disco não foi
+          // regenerado após mudança do enum (ex.: `tsx watch` sem `prisma generate`).
+          notIn: ["RETIRADO", "DEVOLUCAO_FEITA"] as TrajeLocadoStatus[],
+        },
+        NOT: {
+          AND: [
+            { status: "PRONTO" as TrajeLocadoStatus },
+            { precisaAjuste: false },
+            {
+              OR: [
+                { precisaLavagem: false },
+                { lavagemStatus: LavagemStatus.FEITO },
+              ],
+            },
+          ],
+        },
       },
       include: {
         traje: true,
@@ -112,6 +118,7 @@ export async function getDashboard() {
     alertasInteligentes: alertasInteligentes.map((a) => ({
       id: a.id,
       status: a.status,
+      precisaAjuste: a.precisaAjuste,
       clienteNome: a.retirada.locacao.cliente.nome,
       trajeNome: a.traje.nome,
       trajeCodigo: a.traje.codigo,

@@ -14,6 +14,11 @@ export async function deleteTrajeLocado(req: Request, res: Response) {
   res.json(row);
 }
 
+export async function postEncaminharCostureira(req: Request, res: Response) {
+  const row = await service.postEnviarParaCostureira(requireParam(req.params.id));
+  res.json(row);
+}
+
 export async function postEncaminharLavagem(req: Request, res: Response) {
   const row = await service.postEnviarParaLavagem(requireParam(req.params.id));
   res.json(row);

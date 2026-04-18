@@ -6,14 +6,12 @@ export type TrajeTipo =
   | "DAMINHA";
 
 export type TrajeLocadoStatus =
-  | "AGUARDANDO_AJUSTE"
-  | "EM_AJUSTE"
-  | "AJUSTADO"
-  | "LAVAGEM_PENDENTE"
-  | "EM_LAVAGEM"
-  | "PRONTO_RETIRADA"
+  | "COSTUREIRA"
+  | "LAVANDO"
+  | "FALTA_PASSAR"
+  | "PRONTO"
   | "RETIRADO"
-  | "FINALIZADO";
+  | "DEVOLUCAO_FEITA";
 
 export type RetiradaStatus = "PENDENTE" | "PRONTO" | "RETIRADO";
 
@@ -28,14 +26,12 @@ export const LABEL_TRAJE_TIPO: Record<TrajeTipo, string> = {
 };
 
 export const LABEL_TRAJE_LOCADO_STATUS: Record<TrajeLocadoStatus, string> = {
-  AGUARDANDO_AJUSTE: "Aguardando ajuste",
-  EM_AJUSTE: "Em ajuste",
-  AJUSTADO: "Ajustado",
-  LAVAGEM_PENDENTE: "Lavagem / passador pendente",
-  EM_LAVAGEM: "Em lavagem / preparação",
-  PRONTO_RETIRADA: "Pronto para retirada",
+  COSTUREIRA: "Costureira",
+  LAVANDO: "Lavando",
+  FALTA_PASSAR: "Falta passar",
+  PRONTO: "Pronto",
   RETIRADO: "Retirado",
-  FINALIZADO: "Finalizado",
+  DEVOLUCAO_FEITA: "Devolução feita",
 };
 
 export const LABEL_RETIRADA_STATUS: Record<RetiradaStatus, string> = {
@@ -51,14 +47,30 @@ export const LABEL_AJUSTE_TIPO: Record<AjusteTipo, string> = {
   OUTROS: "Outros",
 };
 
-/** Badges: pronto → verde; ajuste → âmbar; lavagem → laranja; encerrado → rosa/cinza */
+/** Badge do status operacional do traje locado (fluxo sequencial). */
 export function badgeClassForTrajeStatus(s: TrajeLocadoStatus): string {
-  if (s === "PRONTO_RETIRADA") return "bg-emerald-100 text-emerald-900";
-  if (s === "RETIRADO" || s === "FINALIZADO")
-    return "bg-[#FCE4EC] text-[#AD1457] border border-[#F8BBD0]";
-  if (s === "EM_LAVAGEM") return "bg-orange-100 text-orange-900";
-  if (s === "LAVAGEM_PENDENTE") return "bg-orange-50 text-orange-900 border border-orange-200";
-  if (s === "EM_AJUSTE" || s === "AGUARDANDO_AJUSTE") return "bg-amber-100 text-amber-900";
-  if (s === "AJUSTADO") return "bg-yellow-50 text-yellow-900 border border-yellow-200";
-  return "bg-violet-100 text-violet-900";
+  if (s === "COSTUREIRA") {
+    return "bg-orange-100 text-orange-950 border border-orange-200";
+  }
+  if (s === "LAVANDO") {
+    return "bg-sky-100 text-sky-950 border border-sky-200";
+  }
+  if (s === "FALTA_PASSAR") {
+    return "bg-amber-100 text-amber-950 border border-amber-200";
+  }
+  if (s === "PRONTO") {
+    return "bg-emerald-100 text-emerald-900 border border-emerald-200";
+  }
+  if (s === "RETIRADO") {
+    return "bg-violet-100 text-violet-900 border border-violet-200";
+  }
+  if (s === "DEVOLUCAO_FEITA") {
+    return "bg-slate-200 text-slate-800 border border-slate-300";
+  }
+  return "bg-slate-100 text-slate-800 border border-slate-200";
+}
+
+/** Indicador separado: ajuste pendente (ainda não enviado ou em fila de costura). */
+export function badgeClassPrecisaAjuste(): string {
+  return "bg-rose-50 text-rose-900 border border-rose-200";
 }
