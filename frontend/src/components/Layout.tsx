@@ -5,7 +5,7 @@ import { clearUserRole, getUserRole } from "../lib/auth";
 import { MobileGuard } from "./MobileGuard";
 
 const navAdmin = [
-  { to: "/", label: "Dashboard" },
+  { to: "/", label: "Painel" },
   { to: "/clientes", label: "Clientes" },
   { to: "/trajes", label: "Trajes" },
   { to: "/locacoes", label: "Locações" },
@@ -20,7 +20,7 @@ const navMobile = [
 ];
 
 function titleFromPath(pathname: string): string {
-  if (pathname === "/") return "Dashboard";
+  if (pathname === "/") return "Painel";
   if (pathname === "/locacoes/nova") return "Nova locação";
   if (pathname.startsWith("/locacoes/")) return "Locação";
   if (pathname.startsWith("/clientes/novo")) return "Novo cliente";

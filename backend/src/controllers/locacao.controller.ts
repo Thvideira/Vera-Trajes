@@ -8,6 +8,7 @@ import {
   relatorioQuerySchema,
   retiradaAddSchema,
 } from "../validation/schemas.js";
+import { computeRemaining } from "../services/finance.service.js";
 import * as service from "../services/locacao.service.js";
 
 export async function getList(req: Request, res: Response) {
@@ -72,7 +73,12 @@ export async function postPagamento(req: Request, res: Response) {
 
 export async function getPagamentosPendentes(_req: Request, res: Response) {
   const rows = await service.listarPagamentosPendentes();
-  res.json(rows);
+  res.json(
+    rows.map((r) => ({
+      ...r,
+      valorRestante: computeRemaining(r.valorTotal, r.valorPago).toFixed(2),
+    }))
+  );
 }
 
 export async function getRelatorio(req: Request, res: Response) {

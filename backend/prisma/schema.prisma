@@ -229,6 +229,7 @@ model Pagamento {
   tipo      TipoPagamentoRegistro
   createdAt DateTime              @default(now()) @map("created_at")
 
+  @@index([createdAt])
   @@map("pagamentos")
 }
 

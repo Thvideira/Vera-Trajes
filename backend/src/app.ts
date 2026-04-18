@@ -13,6 +13,7 @@ import { dashboardRouter } from "./routes/dashboard.routes.js";
 import { financeiroRouter } from "./routes/financeiro.routes.js";
 import { locacaoRouter } from "./routes/locacao.routes.js";
 import { movimentacaoRouter } from "./routes/movimentacao.routes.js";
+import { pagamentoRouter } from "./routes/pagamento.routes.js";
 import { notificacaoRouter } from "./routes/notificacao.routes.js";
 import { retiradaRouter } from "./routes/retirada.routes.js";
 import { trajeLocadoRouter } from "./routes/trajeLocado.routes.js";
@@ -52,6 +53,7 @@ export function createApp() {
   app.use("/api/ajustes", requireAdmin, ajusteRouter);
   app.use("/api/dashboard", requireAdmin, dashboardRouter);
   app.use("/api/financeiro", requireAdmin, financeiroRouter);
+  app.use("/api/pagamentos", requireAdmin, pagamentoRouter);
   app.use("/api/notificacoes", requireAdmin, notificacaoRouter);
 
   app.use(errorHandler);

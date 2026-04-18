@@ -12,7 +12,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { derivePaymentStatus } from "./finance.service.js";
+import { computeRemaining, derivePaymentStatus } from "./finance.service.js";
 import { registrarHistorico } from "./locacaoHistorico.service.js";
 import { sendConfirmacaoAluguel } from "./notificacao.service.js";
 import {
@@ -940,6 +940,29 @@ export async function registrarPagamento(
   ]);
 
   return getLocacao(locacaoId);
+}
+
+/**
+ * Registra pagamento informando apenas o valor desta quitação (parcial ou total).
+ * O tipo SINAL/PARCIAL/FINAL é escolhido automaticamente conforme o saldo restante.
+ */
+export async function registrarPagamentoPorValorPago(
+  locacaoId: string,
+  valorPagoRegistro: number
+) {
+  const loc = await getLocacao(locacaoId);
+  const rem = computeRemaining(loc.valorTotal, loc.valorPago);
+  const v = new Prisma.Decimal(Number(valorPagoRegistro).toFixed(2));
+  if (v.lte(0)) {
+    throw new AppError(400, "O valor do pagamento deve ser maior que zero");
+  }
+  if (v.gt(rem)) {
+    throw new AppError(400, "Valor superior ao restante da locação");
+  }
+  const tipo = v.equals(rem)
+    ? TipoPagamentoRegistro.FINAL
+    : TipoPagamentoRegistro.PARCIAL;
+  return registrarPagamento(locacaoId, v, tipo);
 }
 
 /**

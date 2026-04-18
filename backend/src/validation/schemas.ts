@@ -105,6 +105,11 @@ export const pagamentoSchema = z.object({
   tipo: z.nativeEnum(TipoPagamentoRegistro),
 });
 
+/** Registro financeiro simplificado (valor desta quitação, sem tipo explícito). */
+export const registrarPagamentoValorSchema = z.object({
+  valor_pago: z.coerce.number().positive(),
+});
+
 export const ajusteCreateSchema = z.object({
   tipo: z.nativeEnum(AjusteTipo),
   descricao: z.string().optional(),
