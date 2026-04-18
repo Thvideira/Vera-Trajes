@@ -73,6 +73,26 @@ Crie o usuário admin de teste:
 npm run db:seed
 ```
 
+#### Reset operacional (apagar todas as locações)
+
+**Irreversível.** Remove todas as locações do banco (em cascata: retiradas, trajes locados, ajustes, pagamentos, notificações e histórico da locação), marca **todos** os trajes como `DISPONIVEL` e, se você pedir, apaga também as **movimentações** de estoque.
+
+- **Não** apaga clientes, usuários nem o cadastro de trajes.
+- Use só em **desenvolvimento** ou quando tiver certeza absoluta.
+
+```bash
+cd backend
+CONFIRM_RESET=SIM npm run reset:locacoes
+```
+
+Para também esvaziar a tabela `movimentacoes` (banco “limpo” para testes):
+
+```bash
+CONFIRM_RESET=SIM RESET_MOVIMENTACOES=SIM npm run reset:locacoes
+```
+
+Sem `CONFIRM_RESET=SIM` o comando **não faz nada** e encerra com erro.
+
 Suba a API:
 
 ```bash
