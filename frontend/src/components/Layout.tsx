@@ -59,7 +59,7 @@ export function Layout() {
     showPopup({
       type: "success",
       title: "Bem-vindo",
-      message: `Bem-vindo ao sistema, ${welcomeUserName}!`,
+      message: `Bem-vindo a Loja Vera Aluguel de Trajes, ${welcomeUserName}!`,
       confirmText: "OK",
       autoCloseMs: 6000,
       closeOnBackdrop: true,
