@@ -156,12 +156,16 @@ export function DashboardPage() {
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassTrajeLocadoComContexto(
                           a.status,
-                          a.precisaAjuste
+                          a.precisaAjuste,
+                          a.precisaLavagem,
+                          a.lavagemStatus
                         )}`}
                       >
                         {labelTrajeLocadoComContexto(
                           a.status,
-                          a.precisaAjuste
+                          a.precisaAjuste,
+                          a.precisaLavagem,
+                          a.lavagemStatus
                         )}
                       </span>
                       {exibirSegundoBadgeAjustePendente(

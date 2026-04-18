@@ -74,6 +74,8 @@ function TrajeThumb({
   codigo,
   status,
   precisaAjuste,
+  precisaLavagem,
+  lavagemStatus,
   onOpenPreview,
   sizeClass = "h-20 w-20",
 }: {
@@ -82,6 +84,8 @@ function TrajeThumb({
   codigo: string;
   status: TrajeLocadoStatus;
   precisaAjuste?: boolean;
+  precisaLavagem?: boolean;
+  lavagemStatus?: string;
   onOpenPreview?: (url: string) => void;
   sizeClass?: string;
 }) {
@@ -112,10 +116,17 @@ function TrajeThumb({
           <span
             className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassTrajeLocadoComContexto(
               status,
-              precisaAjuste
+              precisaAjuste,
+              precisaLavagem,
+              lavagemStatus
             )}`}
           >
-            {labelTrajeLocadoComContexto(status, precisaAjuste)}
+            {labelTrajeLocadoComContexto(
+              status,
+              precisaAjuste,
+              precisaLavagem,
+              lavagemStatus
+            )}
           </span>
           {exibirSegundoBadgeAjustePendente(status, precisaAjuste) ? (
             <span
@@ -280,6 +291,8 @@ export function LocacoesPage() {
                               codigo={tl.traje.codigo}
                               status={tl.status}
                               precisaAjuste={tl.precisaAjuste}
+                              precisaLavagem={tl.precisaLavagem}
+                              lavagemStatus={tl.lavagemStatus}
                               onOpenPreview={setFotoModal}
                             />
                           ))
@@ -792,9 +805,6 @@ type LocacaoDetalhe = {
 
 export function LocacaoDetailPage({ id }: { id: string }) {
   const [loc, setLoc] = useState<LocacaoDetalhe | null>(null);
-  const [hist, setHist] = useState<{ id: string; acao: string; createdAt: string }[]>(
-    []
-  );
   const [payVal, setPayVal] = useState("");
   const [payTipo, setPayTipo] = useState("PARCIAL");
   const [err, setErr] = useState<string | null>(null);
@@ -810,8 +820,6 @@ export function LocacaoDetailPage({ id }: { id: string }) {
   async function load() {
     const row = await apiGet<LocacaoDetalhe>(`/api/locacoes/${id}`);
     setLoc(row);
-    const h = await apiGet<typeof hist>(`/api/locacoes/${id}/historico`);
-    setHist(h);
   }
 
   useEffect(() => {
@@ -1057,6 +1065,8 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                       codigo={tl.traje.codigo}
                       status={tl.status}
                       precisaAjuste={tl.precisaAjuste}
+                      precisaLavagem={tl.precisaLavagem}
+                      lavagemStatus={tl.lavagemStatus}
                       onOpenPreview={setFotoModal}
                     />
                     <p className="text-xs text-slate-500">
@@ -1184,20 +1194,6 @@ export function LocacaoDetailPage({ id }: { id: string }) {
             </ul>
           </div>
         ))}
-      </section>
-
-      <section>
-        <h2 className="text-lg font-medium mb-2">Histórico</h2>
-        <ul className="text-sm space-y-2 border rounded-xl p-4 bg-slate-50 max-h-64 overflow-y-auto">
-          {hist.map((h) => (
-            <li key={h.id} className="border-b border-slate-200 pb-2">
-              <span className="text-slate-500">
-                {new Date(h.createdAt).toLocaleString("pt-BR")} —{" "}
-              </span>
-              {h.acao}
-            </li>
-          ))}
-        </ul>
       </section>
 
       {fotoModal && (

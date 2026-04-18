@@ -17,6 +17,8 @@ export type RetiradaStatus = "PENDENTE" | "PRONTO" | "RETIRADO";
 
 export type AjusteTipo = "BARRA" | "CINTURA" | "COMPRIMENTO" | "OUTROS";
 
+export type LavagemStatus = "PENDENTE" | "EM_ANDAMENTO" | "FEITO";
+
 export const LABEL_TRAJE_TIPO: Record<TrajeTipo, string> = {
   VESTIDO: "Vestido",
   TERNO: "Terno",
@@ -58,13 +60,31 @@ export function trajeLocadoNaoProntoParaExibir(
   return status === "PRONTO" && Boolean(precisaAjuste);
 }
 
-/** Rótulo principal do traje (status + contexto de ajuste). */
+/** Etapa LAVANDO com lavagem ainda não iniciada na lavanderia (só encaminhar). */
+export function trajeLocadoEncaminharLavanderia(
+  status: TrajeLocadoStatus,
+  precisaLavagem: boolean | undefined,
+  lavagemStatus: string | undefined
+): boolean {
+  return (
+    status === "LAVANDO" &&
+    Boolean(precisaLavagem) &&
+    lavagemStatus === "PENDENTE"
+  );
+}
+
+/** Rótulo principal do traje (status + contexto de ajuste / lavagem). */
 export function labelTrajeLocadoComContexto(
   status: TrajeLocadoStatus,
-  precisaAjuste: boolean | undefined
+  precisaAjuste: boolean | undefined,
+  precisaLavagem?: boolean,
+  lavagemStatus?: string
 ): string {
   if (trajeLocadoNaoProntoParaExibir(status, precisaAjuste)) {
     return "Aguardando ajuste";
+  }
+  if (trajeLocadoEncaminharLavanderia(status, precisaLavagem, lavagemStatus)) {
+    return "Encaminhe para a lavanderia";
   }
   return LABEL_TRAJE_LOCADO_STATUS[status];
 }
@@ -72,10 +92,15 @@ export function labelTrajeLocadoComContexto(
 /** Classes do badge principal (âmbar na fase “aguardando ajuste”, não verde “Pronto”). */
 export function badgeClassTrajeLocadoComContexto(
   status: TrajeLocadoStatus,
-  precisaAjuste: boolean | undefined
+  precisaAjuste: boolean | undefined,
+  precisaLavagem?: boolean,
+  lavagemStatus?: string
 ): string {
   if (trajeLocadoNaoProntoParaExibir(status, precisaAjuste)) {
     return "bg-amber-100 text-amber-950 border border-amber-200";
+  }
+  if (trajeLocadoEncaminharLavanderia(status, precisaLavagem, lavagemStatus)) {
+    return "bg-slate-100 text-slate-800 border border-slate-300";
   }
   return badgeClassForTrajeStatus(status);
 }
