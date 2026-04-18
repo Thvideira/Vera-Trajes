@@ -21,7 +21,7 @@ import {
   recomputeTrajeLocado,
   syncRetiradaStatus,
 } from "./trajeLocadoWorkflow.service.js";
-import { weekendRangeUtcFromEventDate } from "../utils/weekendRange.js";
+import { assertTrajeIntervaloMinimoLocacoes } from "./locacaoIntervaloTraje.service.js";
 
 export interface RetiradaInput {
   dataRetirada: Date;
@@ -45,7 +45,8 @@ export interface RetiradaCreateRaw {
 export interface CreateLocacaoInput {
   clienteId: string;
   observacoes?: string | null;
-  dataEvento?: Date | null;
+  /** Obrigatório na criação (regra dos 5 dias e negócio). */
+  dataEvento: Date;
   dataDevolucaoPrevista?: Date | null;
   valorTotal: Prisma.Decimal | string | number;
   valorPagoInicial?: Prisma.Decimal | string | number;
@@ -119,39 +120,6 @@ async function assertTrajeLivreNaLocacao(
   }
 }
 
-/** Não permite o mesmo traje em duas locações abertas com evento no mesmo fim de semana (sáb–dom). */
-async function assertTrajesSemConflitoMesmoFimDeSemana(
-  trajeIds: string[],
-  dataEvento: Date | null | undefined,
-  excludeLocacaoId?: string
-): Promise<void> {
-  if (!dataEvento) return;
-  const unique = [...new Set(trajeIds)];
-  const { gte, lte } = weekendRangeUtcFromEventDate(dataEvento);
-
-  for (const trajeId of unique) {
-    const conflict = await prisma.trajeLocado.findFirst({
-      where: {
-        trajeId,
-        retirada: {
-          locacao: {
-            encerrada: false,
-            dataEvento: { not: null, gte, lte },
-            ...(excludeLocacaoId ? { NOT: { id: excludeLocacaoId } } : {}),
-          },
-        },
-      },
-      include: { traje: { select: { codigo: true, nome: true } } },
-    });
-    if (conflict) {
-      throw new AppError(
-        400,
-        `O traje ${conflict.traje.codigo} (${conflict.traje.nome}) já está em outra locação aberta cujo evento é no mesmo final de semana`
-      );
-    }
-  }
-}
-
 function coletarTrajeIdsDaLocacao(loc: {
   retiradas: { trajesLocados: { trajeId: string }[] }[];
 }): string[] {
@@ -184,11 +152,10 @@ export async function createLocacao(input: CreateLocacaoInput) {
     throw new AppError(400, "Traje duplicado na mesma locação");
   }
 
-  await assertTrajesSemConflitoMesmoFimDeSemana(
-    allTrajes,
-    input.dataEvento ?? null,
-    undefined
-  );
+  const dataInicioRef = input.dataEvento;
+  for (const tid of new Set(allTrajes)) {
+    await assertTrajeIntervaloMinimoLocacoes(tid, dataInicioRef);
+  }
 
   const valorTotal = new Prisma.Decimal(input.valorTotal);
   const valorPagoInicial = new Prisma.Decimal(input.valorPagoInicial ?? 0);
@@ -204,11 +171,6 @@ export async function createLocacao(input: CreateLocacaoInput) {
     if (trajesDb.length !== allTrajes.length) {
       throw new AppError(400, "Traje não encontrado");
     }
-    for (const t of trajesDb) {
-      if (t.status !== TrajeStatus.DISPONIVEL) {
-        throw new AppError(400, `Traje ${t.codigo} não está disponível`);
-      }
-    }
 
     const statusPagamento = derivePaymentStatus(valorTotal, valorPagoInicial);
 
@@ -216,7 +178,7 @@ export async function createLocacao(input: CreateLocacaoInput) {
       data: {
         clienteId: inputComRetiradas.clienteId,
         observacoes: inputComRetiradas.observacoes ?? null,
-        dataEvento: inputComRetiradas.dataEvento ?? null,
+        dataEvento: inputComRetiradas.dataEvento,
         dataDevolucaoPrevista: inputComRetiradas.dataDevolucaoPrevista ?? null,
         valorTotal,
         valorPago: valorPagoInicial,
@@ -407,12 +369,14 @@ export async function patchLocacao(
   }
 ) {
   const antes = await getLocacao(id);
-  if (data.dataEvento !== undefined && data.dataEvento !== null) {
-    await assertTrajesSemConflitoMesmoFimDeSemana(
-      coletarTrajeIdsDaLocacao(antes),
-      data.dataEvento,
-      id
-    );
+  if (data.dataEvento !== undefined) {
+    const novoRef =
+      data.dataEvento === null ? antes.dataAluguel : data.dataEvento;
+    for (const tid of coletarTrajeIdsDaLocacao(antes)) {
+      await assertTrajeIntervaloMinimoLocacoes(tid, novoRef, {
+        excludeLocacaoId: id,
+      });
+    }
   }
   const loc = await prisma.locacao.update({
     where: { id },
@@ -454,17 +418,21 @@ export async function addRetirada(locacaoId: string, input: RetiradaInput) {
   }
 
   const trajeIds = input.trajes.map((t) => t.trajeId);
-  await assertTrajesSemConflitoMesmoFimDeSemana(
-    trajeIds,
-    locacao.dataEvento,
-    locacaoId
-  );
+  const uniqueTrajeIds = [...new Set(trajeIds)];
+
+  const refLocacao = locacao.dataEvento ?? locacao.dataAluguel;
+  for (const tid of uniqueTrajeIds) {
+    await assertTrajeIntervaloMinimoLocacoes(tid, refLocacao, {
+      excludeLocacaoId: locacaoId,
+    });
+  }
+
   await prisma.$transaction(async (tx) => {
-    const trajesDb = await tx.traje.findMany({ where: { id: { in: trajeIds } } });
-    for (const t of trajesDb) {
-      if (t.status !== TrajeStatus.DISPONIVEL) {
-        throw new AppError(400, `Traje ${t.codigo} não está disponível`);
-      }
+    const trajesDb = await tx.traje.findMany({
+      where: { id: { in: uniqueTrajeIds } },
+    });
+    if (trajesDb.length !== uniqueTrajeIds.length) {
+      throw new AppError(400, "Traje não encontrado");
     }
 
     const ret = await tx.retirada.create({
@@ -504,10 +472,10 @@ export async function addRetirada(locacaoId: string, input: RetiradaInput) {
     });
 
     await tx.traje.updateMany({
-      where: { id: { in: trajeIds } },
+      where: { id: { in: uniqueTrajeIds } },
       data: { status: TrajeStatus.ALUGADO },
     });
-    for (const tid of trajeIds) {
+    for (const tid of uniqueTrajeIds) {
       await tx.movimentacao.create({
         data: {
           trajeId: tid,
@@ -525,7 +493,7 @@ export async function addRetirada(locacaoId: string, input: RetiradaInput) {
       data: {
         locacaoId,
         acao: "Retirada adicionada",
-        detalhe: { retiradaId: ret.id, trajes: trajeIds },
+        detalhe: { retiradaId: ret.id, trajes: uniqueTrajeIds },
       },
     });
   });
@@ -587,15 +555,15 @@ export async function addTrajeLocado(
   }
 
   await assertTrajeLivreNaLocacao(ret.locacaoId, input.trajeId);
-  await assertTrajesSemConflitoMesmoFimDeSemana(
-    [input.trajeId],
-    ret.locacao.dataEvento,
-    ret.locacaoId
-  );
+
+  const refLocacao = ret.locacao.dataEvento ?? ret.locacao.dataAluguel;
+  await assertTrajeIntervaloMinimoLocacoes(input.trajeId, refLocacao, {
+    excludeLocacaoId: ret.locacaoId,
+  });
 
   const tj = await prisma.traje.findUnique({ where: { id: input.trajeId } });
-  if (!tj || tj.status !== TrajeStatus.DISPONIVEL) {
-    throw new AppError(400, "Traje não disponível");
+  if (!tj) {
+    throw new AppError(400, "Traje não encontrado");
   }
 
   await prisma.$transaction(async (tx) => {

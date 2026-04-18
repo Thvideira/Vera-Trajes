@@ -84,7 +84,7 @@ export function labelTrajeLocadoComContexto(
     return "Aguardando ajuste";
   }
   if (trajeLocadoEncaminharLavanderia(status, precisaLavagem, lavagemStatus)) {
-    return "Encaminhe para a lavanderia";
+    return "Encaminhe à lavanderia";
   }
   return LABEL_TRAJE_LOCADO_STATUS[status];
 }

@@ -7,8 +7,10 @@ import {
   pagamentoSchema,
   relatorioQuerySchema,
   retiradaAddSchema,
+  validarIntervaloTrajesSchema,
 } from "../validation/schemas.js";
 import { computeRemaining } from "../services/finance.service.js";
+import { validarIntervaloTrajesLocacao } from "../services/locacaoIntervaloTraje.service.js";
 import * as service from "../services/locacao.service.js";
 
 export async function getList(req: Request, res: Response) {
@@ -38,12 +40,23 @@ export async function patchLocacao(req: Request, res: Response) {
   res.json(row);
 }
 
+/** Valida intervalo mínimo entre locações do mesmo traje (feedback antes do POST principal). */
+export async function postValidarIntervaloTrajes(req: Request, res: Response) {
+  const body = validarIntervaloTrajesSchema.parse(req.body);
+  const out = await validarIntervaloTrajesLocacao({
+    dataInicio: body.dataInicio,
+    trajeIds: body.trajeIds,
+    excludeLocacaoId: body.excludeLocacaoId,
+  });
+  res.json(out);
+}
+
 export async function postCreate(req: Request, res: Response) {
   const data = locacaoCreateSchema.parse(req.body);
   const row = await service.createLocacao({
     clienteId: data.clienteId,
     observacoes: data.observacoes,
-    dataEvento: data.dataEvento ?? null,
+    dataEvento: data.dataEvento,
     dataDevolucaoPrevista: data.dataDevolucaoPrevista ?? null,
     valorTotal: data.valorTotal,
     valorPagoInicial: data.valorPagoInicial,

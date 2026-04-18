@@ -72,7 +72,8 @@ export const retiradaAddSchema = z.object({
 export const locacaoCreateSchema = z.object({
   clienteId: z.string().min(1),
   observacoes: z.string().optional().nullable(),
-  dataEvento: z.coerce.date().optional().nullable(),
+  /** Obrigatório: referência para intervalo mínimo entre locações do mesmo traje. */
+  dataEvento: z.coerce.date(),
   dataDevolucaoPrevista: z.coerce.date().optional().nullable(),
   valorTotal: z.coerce.number().positive(),
   valorPagoInicial: z.coerce.number().nonnegative().optional(),
@@ -83,6 +84,12 @@ export const locacaoPatchSchema = z.object({
   observacoes: z.string().optional().nullable(),
   dataEvento: z.coerce.date().optional().nullable(),
   dataDevolucaoPrevista: z.coerce.date().optional().nullable(),
+});
+
+export const validarIntervaloTrajesSchema = z.object({
+  dataInicio: z.coerce.date(),
+  trajeIds: z.array(z.string().min(1)).min(1),
+  excludeLocacaoId: z.string().min(1).optional(),
 });
 
 export const retiradaPatchSchema = z.object({

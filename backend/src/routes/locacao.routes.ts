@@ -5,6 +5,10 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 export const locacaoRouter = Router();
 locacaoRouter.get("/pagamentos-pendentes", asyncHandler(ctrl.getPagamentosPendentes));
 locacaoRouter.get("/relatorio", asyncHandler(ctrl.getRelatorio));
+locacaoRouter.post(
+  "/validar-intervalo-trajes",
+  asyncHandler(ctrl.postValidarIntervaloTrajes)
+);
 locacaoRouter.post("/", asyncHandler(ctrl.postCreate));
 locacaoRouter.get("/", asyncHandler(ctrl.getList));
 locacaoRouter.patch("/:id", asyncHandler(ctrl.patchLocacao));

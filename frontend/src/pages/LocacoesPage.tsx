@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { confirmAsync, showPopup } from "../contexts/PopupContext";
+import { showPopup } from "../contexts/PopupContext";
 import { apiGet, apiSend } from "../lib/api";
 import { subscribeTrajeCatalogLive } from "../lib/trajesCatalog";
 import {
@@ -431,10 +431,38 @@ export function LocacaoNovaPage() {
         return;
       }
 
+      if (!form.dataEvento.trim()) {
+        setErr(
+          "Informe a data do evento. Ela é obrigatória e define o intervalo mínimo de 5 dias entre locações do mesmo traje."
+        );
+        return;
+      }
+
+      const trajeIds = [
+        ...new Set(
+          retiradas.flatMap((r) =>
+            r.trajes.map((t) => t.trajeId.trim()).filter(Boolean)
+          )
+        ),
+      ];
+      if (trajeIds.length > 0) {
+        const dataInicio = new Date(form.dataEvento);
+        const intervalo = await apiSend<
+          { ok: true } | { ok: false; message: string }
+        >("/api/locacoes/validar-intervalo-trajes", "POST", {
+          dataInicio: dataInicio.toISOString(),
+          trajeIds,
+        });
+        if (!intervalo.ok) {
+          setErr(intervalo.message);
+          return;
+        }
+      }
+
       const payload = {
         clienteId: form.clienteId,
         observacoes: form.observacoes || undefined,
-        dataEvento: form.dataEvento || undefined,
+        dataEvento: form.dataEvento,
         dataDevolucaoPrevista: form.dataDevolucaoPrevista || undefined,
         valorTotal: Number(form.valorTotal),
         valorPagoInicial: Number(form.valorPagoInicial || 0),
@@ -499,15 +527,21 @@ export function LocacaoNovaPage() {
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1">Evento (opcional)</label>
+            <label className="block text-sm font-medium mb-1">
+              Data do evento <span className="text-red-600">*</span>
+            </label>
             <input
               type="datetime-local"
+              required
               className="w-full rounded-lg border px-3 py-2"
               value={form.dataEvento}
               onChange={(e) =>
                 setForm((f) => ({ ...f, dataEvento: e.target.value }))
               }
             />
+            <p className="text-xs text-slate-500 mt-1">
+              Obrigatória: sem ela não é possível alugar trajes; usada na regra dos 5 dias entre locações do mesmo traje.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
@@ -608,6 +642,7 @@ export function LocacaoNovaPage() {
               {ret.trajes.map((tr, ti) => (
                 <div key={ti} className="border rounded-lg p-3 bg-white space-y-2">
                   <TrajePicker
+                    incluirTrajesEmUso
                     value={tr.trajeId}
                     onChange={(id) =>
                       setRetiradas((rows) =>
@@ -751,16 +786,22 @@ export function LocacaoNovaPage() {
 export function TrajePicker({
   value,
   onChange,
+  incluirTrajesEmUso = false,
 }: {
   value: string;
   onChange: (id: string) => void;
+  /** Lista também ALUGADO (nova locação / traje em locação encerrada). */
+  incluirTrajesEmUso?: boolean;
 }) {
   const [list, setList] = useState<Traje[]>([]);
 
   const loadList = useCallback(async () => {
-    const rows = await apiGet<Traje[]>("/api/trajes?status=DISPONIVEL");
+    const path = incluirTrajesEmUso
+      ? "/api/trajes"
+      : "/api/trajes?status=DISPONIVEL";
+    const rows = await apiGet<Traje[]>(path);
     setList(rows);
-  }, []);
+  }, [incluirTrajesEmUso]);
 
   useEffect(() => {
     void loadList();
@@ -784,6 +825,7 @@ export function TrajePicker({
         {list.map((t) => (
           <option key={t.id} value={t.id}>
             {t.codigo} — {t.nome}
+            {t.status === "ALUGADO" ? " (em uso)" : ""}
           </option>
         ))}
       </select>
@@ -885,23 +927,6 @@ export function LocacaoDetailPage({ id }: { id: string }) {
       precisaLavagem: true,
     });
     setNovoTrajeRetirada((o) => ({ ...o, [retiradaId]: "" }));
-    await load();
-  }
-
-  async function removerTrajeLocadoClick(trajeLocadoId: string) {
-    const ok = await confirmAsync({
-      type: "warning",
-      title: "Remover traje",
-      message:
-        "Remover este traje desta retirada? O traje volta a ficar disponível.",
-      confirmText: "Remover",
-      cancelText: "Cancelar",
-      danger: true,
-      closeOnBackdrop: false,
-      closeOnEscape: false,
-    });
-    if (!ok) return;
-    await apiSend(`/api/trajes-locados/${trajeLocadoId}`, "DELETE");
     await load();
   }
 
@@ -1035,6 +1060,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                   <div className="flex flex-wrap gap-2 items-end">
                     <div className="flex-1 min-w-[200px]">
                       <TrajePicker
+                        incluirTrajesEmUso
                         value={novoTrajeRetirada[r.id] ?? ""}
                         onChange={(trajeId) =>
                           setNovoTrajeRetirada((prev) => ({
@@ -1095,15 +1121,6 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                   </ul>
                   {!loc.encerrada && (
                     <div className="flex flex-wrap gap-2">
-                      {(tl.status === "PRONTO" || tl.status === "COSTUREIRA") && (
-                        <button
-                          type="button"
-                          className="btn-secondary text-xs"
-                          onClick={() => void removerTrajeLocadoClick(tl.id)}
-                        >
-                          Remover traje
-                        </button>
-                      )}
                       {tl.status === "PRONTO" && tl.precisaAjuste && (
                         <button
                           type="button"
