@@ -59,7 +59,12 @@ export async function updateTraje(id: string, data: Prisma.TrajeUpdateInput) {
 export async function deleteTraje(id: string) {
   const t = await getTraje(id);
   const item = await prisma.trajeLocado.findFirst({ where: { trajeId: id } });
-  if (item) throw new AppError(400, "Traje vinculado a locações");
+  if (item) {
+    throw new AppError(
+      400,
+      "Este traje não pode ser excluído pois está vinculado a locações"
+    );
+  }
   await deleteTrajeImageIfLocal(t.fotoUrl);
   await prisma.traje.delete({ where: { id } });
 }

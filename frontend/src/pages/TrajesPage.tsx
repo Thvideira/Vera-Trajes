@@ -7,8 +7,9 @@ import {
   useState,
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { apiGet, apiSend, apiUploadFoto } from "../lib/api";
-import { isMobileUser } from "../lib/auth";
+import { DeleteTrajeConfirmModal } from "../components/DeleteTrajeConfirmModal";
+import { ApiError, apiGet, apiSend, apiUploadFoto } from "../lib/api";
+import { isAdminUser, isMobileUser } from "../lib/auth";
 import {
   notifyTrajesCatalogChanged,
   subscribeTrajeCatalogLive,
@@ -27,7 +28,10 @@ export type Traje = {
 
 export function TrajesPage() {
   const mobile = isMobileUser();
+  const admin = isAdminUser();
   const [list, setList] = useState<Traje[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<Traje | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [q, setQ] = useState("");
   const [tipo, setTipo] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -54,6 +58,27 @@ export function TrajesPage() {
       void load();
     });
   }, [load]);
+
+  async function confirmDeleteTraje(): Promise<void> {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      await apiSend(`/api/trajes/${deleteTarget.id}`, "DELETE");
+      notifyTrajesCatalogChanged();
+      setDeleteTarget(null);
+      await load();
+    } catch (e) {
+      const msg =
+        e instanceof ApiError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Não foi possível excluir";
+      window.alert(msg);
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -103,11 +128,8 @@ export function TrajesPage() {
           <p>Carregando…</p>
         ) : (
           list.map((t) => {
-            const cardClass =
-              "rounded-xl border border-slate-200 bg-white overflow-hidden " +
-              (mobile
-                ? ""
-                : "hover:border-slate-400 transition cursor-pointer");
+            const cardShell =
+              "rounded-xl border border-slate-200 bg-white overflow-hidden flex flex-col";
             const inner = (
               <>
                 <div className="aspect-[4/3] bg-slate-100 flex items-center justify-center">
@@ -138,18 +160,69 @@ export function TrajesPage() {
                 </div>
               </>
             );
-            return mobile ? (
-              <div key={t.id} className={cardClass}>
-                {inner}
+            if (mobile) {
+              return (
+                <div key={t.id} className={cardShell}>
+                  {inner}
+                </div>
+              );
+            }
+            return (
+              <div
+                key={t.id}
+                className={
+                  cardShell +
+                  (admin ? "" : " hover:border-slate-400 transition")
+                }
+              >
+                <Link
+                  to={`/trajes/${t.id}`}
+                  className="block flex-1 hover:bg-slate-50/50 transition"
+                >
+                  {inner}
+                </Link>
+                {admin ? (
+                  <div className="p-2 border-t border-slate-100 flex justify-end bg-white">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                      onClick={() => setDeleteTarget(t)}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden
+                      >
+                        <path d="M3 6h18" />
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                      </svg>
+                      Excluir
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            ) : (
-              <Link key={t.id} to={`/trajes/${t.id}`} className={cardClass}>
-                {inner}
-              </Link>
             );
           })
         )}
       </div>
+
+      <DeleteTrajeConfirmModal
+        open={deleteTarget !== null}
+        trajeLabel={
+          deleteTarget
+            ? `${deleteTarget.codigo} — ${deleteTarget.nome}`
+            : ""
+        }
+        busy={deleteBusy}
+        onCancel={() => !deleteBusy && setDeleteTarget(null)}
+        onConfirm={() => void confirmDeleteTraje()}
+      />
     </div>
   );
 }
@@ -163,6 +236,8 @@ export function TrajeFormPage({ id }: { id?: string }) {
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [fotoInputsKey, setFotoInputsKey] = useState(0);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [form, setForm] = useState({
     nome: "",
     tipo: "VESTIDO" as TrajeTipo,
@@ -233,6 +308,27 @@ export function TrajeFormPage({ id }: { id?: string }) {
     if (!id) return;
     await apiSend(`/api/trajes/${id}/foto`, "DELETE");
     setPreview(null);
+  }
+
+  async function confirmDeleteFromEdit(): Promise<void> {
+    if (!id) return;
+    setDeleteBusy(true);
+    try {
+      await apiSend(`/api/trajes/${id}`, "DELETE");
+      notifyTrajesCatalogChanged();
+      setDeleteModalOpen(false);
+      navigate("/trajes");
+    } catch (e) {
+      const msg =
+        e instanceof ApiError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Não foi possível excluir";
+      window.alert(msg);
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   if (loading) return <p>Carregando…</p>;
@@ -370,6 +466,45 @@ export function TrajeFormPage({ id }: { id?: string }) {
           Salvar
         </button>
       </form>
+
+      {!isNew && isAdminUser() ? (
+        <div className="rounded-xl border border-red-200 bg-red-50/60 p-4 space-y-3">
+          <p className="text-sm font-medium text-red-900">Excluir traje</p>
+          <p className="text-xs text-red-800/90">
+            Remove o traje do estoque. Não é possível se houver vínculo com
+            locações.
+          </p>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            onClick={() => setDeleteModalOpen(true)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden
+            >
+              <path d="M3 6h18" />
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+            </svg>
+            Excluir
+          </button>
+        </div>
+      ) : null}
+
+      <DeleteTrajeConfirmModal
+        open={deleteModalOpen}
+        trajeLabel={`${form.codigo} — ${form.nome}`}
+        busy={deleteBusy}
+        onCancel={() => !deleteBusy && setDeleteModalOpen(false)}
+        onConfirm={() => void confirmDeleteFromEdit()}
+      />
     </div>
   );
 }

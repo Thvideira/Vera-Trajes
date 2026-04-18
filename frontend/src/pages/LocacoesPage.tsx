@@ -1,8 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ApiError, apiGet, apiSend } from "../lib/api";
-import { getUserRole } from "../lib/auth";
-import { notifyTrajesCatalogChanged, subscribeTrajeCatalogLive } from "../lib/trajesCatalog";
+import { apiGet, apiSend } from "../lib/api";
+import { subscribeTrajeCatalogLive } from "../lib/trajesCatalog";
 import {
   LABEL_RETIRADA_STATUS,
   LABEL_TRAJE_LOCADO_STATUS,
@@ -719,8 +718,6 @@ export function TrajePicker({
   onChange: (id: string) => void;
 }) {
   const [list, setList] = useState<Traje[]>([]);
-  const [delBusy, setDelBusy] = useState(false);
-  const canExcluirDoCadastro = getUserRole() === "ADMIN";
 
   const loadList = useCallback(async () => {
     const rows = await apiGet<Traje[]>("/api/trajes?status=DISPONIVEL");
@@ -737,63 +734,21 @@ export function TrajePicker({
     });
   }, [loadList]);
 
-  async function excluirTrajeDoCadastro(): Promise<void> {
-    if (!value || !canExcluirDoCadastro) return;
-    const sel = list.find((t) => t.id === value);
-    const label = sel ? `${sel.codigo} — ${sel.nome}` : "este traje";
-    if (
-      !window.confirm(
-        `Excluir ${label} do cadastro de forma permanente?\n\nSó é possível se o traje não estiver vinculado a nenhuma locação.`
-      )
-    ) {
-      return;
-    }
-    setDelBusy(true);
-    try {
-      await apiSend(`/api/trajes/${value}`, "DELETE");
-      notifyTrajesCatalogChanged();
-      onChange("");
-      await loadList();
-    } catch (e) {
-      const msg =
-        e instanceof ApiError
-          ? e.message
-          : e instanceof Error
-            ? e.message
-            : "Não foi possível excluir";
-      window.alert(msg);
-    } finally {
-      setDelBusy(false);
-    }
-  }
-
   return (
-    <div className="space-y-2">
+    <div>
       <label className="block text-sm font-medium mb-1">Traje</label>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-        <select
-          className="w-full flex-1 rounded-lg border border-slate-300 px-3 py-2 min-w-0"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="">Selecione…</option>
-          {list.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.codigo} — {t.nome}
-            </option>
-          ))}
-        </select>
-        {canExcluirDoCadastro && value ? (
-          <button
-            type="button"
-            disabled={delBusy}
-            onClick={() => void excluirTrajeDoCadastro()}
-            className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 hover:bg-red-100 disabled:opacity-50 whitespace-nowrap"
-          >
-            {delBusy ? "Excluindo…" : "Excluir do cadastro"}
-          </button>
-        ) : null}
-      </div>
+      <select
+        className="w-full rounded-lg border border-slate-300 px-3 py-2"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">Selecione…</option>
+        {list.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.codigo} — {t.nome}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
