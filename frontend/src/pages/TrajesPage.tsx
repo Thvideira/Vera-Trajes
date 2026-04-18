@@ -97,13 +97,10 @@ export function TrajesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Trajes</h1>
-          <p className="text-slate-600 text-sm">Estoque por código e tipo</p>
+          <h1 className="text-2xl font-semibold text-foreground">Trajes</h1>
+          <p className="text-muted text-sm">Estoque por código e tipo</p>
         </div>
-        <Link
-          to="/trajes/novo"
-          className="inline-flex justify-center rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium"
-        >
+        <Link to="/trajes/novo" className="btn-primary text-sm">
           Novo traje
         </Link>
       </div>
@@ -115,13 +112,13 @@ export function TrajesPage() {
         }}
       >
         <input
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm flex-1 min-w-[160px]"
+          className="rounded-lg border border-line px-3 py-2 text-sm flex-1 min-w-[160px]"
           placeholder="Código ou nome"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
         <select
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-line px-3 py-2 text-sm"
           value={tipo}
           onChange={(e) => setTipo(e.target.value)}
         >
@@ -132,7 +129,7 @@ export function TrajesPage() {
             </option>
           ))}
         </select>
-        <button type="submit" className="rounded-lg border px-4 py-2 text-sm">
+        <button type="submit" className="btn-secondary text-sm py-2 px-4">
           Filtrar
         </button>
       </form>
@@ -142,10 +139,10 @@ export function TrajesPage() {
         ) : (
           list.map((t) => {
             const cardShell =
-              "rounded-xl border border-slate-200 bg-white overflow-hidden flex flex-col";
+              "rounded-xl border border-line bg-surface overflow-hidden flex flex-col";
             const inner = (
               <>
-                <div className="aspect-[4/3] bg-slate-100 flex items-center justify-center">
+                <div className="aspect-[4/3] bg-hover-gray flex items-center justify-center">
                   {t.fotoUrl ? (
                     <img
                       src={t.fotoUrl}
@@ -153,19 +150,19 @@ export function TrajesPage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-slate-400 text-sm">Sem foto</span>
+                    <span className="text-muted text-sm">Sem foto</span>
                   )}
                 </div>
                 <div className="p-3">
                   <p className="font-medium">{t.nome}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted">
                     {t.codigo} · {LABEL_TRAJE_TIPO[t.tipo]} · {t.tamanho}
                   </p>
                   <p
                     className={`text-xs mt-1 ${
                       t.status === "DISPONIVEL"
-                        ? "text-emerald-700"
-                        : "text-amber-700"
+                        ? "text-success"
+                        : "text-warning-fg"
                     }`}
                   >
                     {t.status === "DISPONIVEL" ? "Disponível" : "Alugado"}
@@ -185,17 +182,17 @@ export function TrajesPage() {
                 key={t.id}
                 className={
                   cardShell +
-                  (admin ? "" : " hover:border-slate-400 transition")
+                  (admin ? "" : " hover:border-primary/40 transition")
                 }
               >
                 <Link
                   to={`/trajes/${t.id}`}
-                  className="block flex-1 hover:bg-slate-50/50 transition"
+                  className="block flex-1 hover:bg-pink-soft transition"
                 >
                   {inner}
                 </Link>
                 {admin ? (
-                  <div className="p-2 border-t border-slate-100 flex justify-end bg-white">
+                  <div className="p-2 border-t border-line flex justify-end bg-surface">
                     <button
                       type="button"
                       disabled={deleteBusyId !== null}
@@ -360,12 +357,15 @@ export function TrajeFormPage({ id }: { id?: string }) {
       <h1 className="text-2xl font-semibold">
         {isNew ? "Novo traje" : "Editar traje"}
       </h1>
-      <form onSubmit={onSubmit} className="space-y-4 bg-white p-6 rounded-xl border">
+      <form
+        onSubmit={onSubmit}
+        className="space-y-4 bg-surface p-6 rounded-xl border border-line shadow-sm"
+      >
         <div>
           <label className="block text-sm font-medium mb-1">Nome</label>
           <input
             required
-            className="w-full rounded-lg border px-3 py-2"
+            className="w-full rounded-lg border border-line px-3 py-2"
             value={form.nome}
             onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
           />
@@ -373,7 +373,7 @@ export function TrajeFormPage({ id }: { id?: string }) {
         <div>
           <label className="block text-sm font-medium mb-1">Tipo</label>
           <select
-            className="w-full rounded-lg border px-3 py-2"
+            className="w-full rounded-lg border border-line px-3 py-2"
             value={form.tipo}
             onChange={(e) =>
               setForm((f) => ({ ...f, tipo: e.target.value as TrajeTipo }))
@@ -392,7 +392,7 @@ export function TrajeFormPage({ id }: { id?: string }) {
           </label>
           <input
             required
-            className="w-full rounded-lg border px-3 py-2"
+            className="w-full rounded-lg border border-line px-3 py-2"
             value={form.codigo}
             onChange={(e) =>
               setForm((f) => ({ ...f, codigo: e.target.value }))
@@ -403,7 +403,7 @@ export function TrajeFormPage({ id }: { id?: string }) {
           <label className="block text-sm font-medium mb-1">Tamanho</label>
           <input
             required
-            className="w-full rounded-lg border px-3 py-2"
+            className="w-full rounded-lg border border-line px-3 py-2"
             value={form.tamanho}
             onChange={(e) =>
               setForm((f) => ({ ...f, tamanho: e.target.value }))
@@ -412,12 +412,12 @@ export function TrajeFormPage({ id }: { id?: string }) {
         </div>
         <div>
           <span className="block text-sm font-medium mb-1">Foto (JPG ou PNG)</span>
-          <p className="text-xs text-slate-500 mb-2">
+          <p className="text-xs text-muted mb-2">
             No celular: use a câmera ou escolha da galeria. Formatos aceitos no
             servidor: JPG e PNG.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium hover:bg-slate-100">
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-line bg-hover-gray px-4 py-2 text-sm font-medium hover:bg-hover-gray">
               <input
                 key={`cam-${fotoInputsKey}`}
                 type="file"
@@ -428,7 +428,7 @@ export function TrajeFormPage({ id }: { id?: string }) {
               />
               Tirar foto
             </label>
-            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50">
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium hover:bg-hover-gray">
               <input
                 key={`gal-${fotoInputsKey}`}
                 type="file"
@@ -438,7 +438,7 @@ export function TrajeFormPage({ id }: { id?: string }) {
               />
               Galeria
             </label>
-            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 px-4 py-2 text-xs text-slate-600 sm:ml-0">
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-line px-4 py-2 text-xs text-muted sm:ml-0">
               <input
                 key={`desk-${fotoInputsKey}`}
                 type="file"
@@ -471,7 +471,7 @@ export function TrajeFormPage({ id }: { id?: string }) {
         {err && <p className="text-sm text-red-600">{err}</p>}
         <button
           type="submit"
-          className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm"
+          className="btn-primary text-sm"
         >
           Salvar
         </button>
@@ -487,7 +487,7 @@ export function TrajeFormPage({ id }: { id?: string }) {
           <button
             type="button"
             disabled={deleteBusy}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-surface px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
             onClick={() =>
               void (async () => {
                 const ok = await confirmAsync({

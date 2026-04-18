@@ -51,14 +51,14 @@ export function DashboardPage() {
     return (
       <p className="text-red-600">
         {err}{" "}
-        <Link to="/login" className="underline text-vera-700">
+        <Link to="/login" className="underline text-primary">
           Fazer login
         </Link>
       </p>
     );
   }
   if (!data) {
-    return <p className="text-slate-500">Carregando…</p>;
+    return <p className="text-muted">Carregando…</p>;
   }
 
   const cards = [
@@ -84,15 +84,15 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-slate-600 mt-1">
+        <p className="text-muted mt-1 text-sm">
           Resumo da operação, alertas e retiradas previstas
         </p>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c) => (
           <div key={c.label} className="card-dashboard">
-            <p className="text-sm text-slate-500">{c.label}</p>
-            <p className="text-2xl font-semibold mt-1 tabular-nums text-slate-900">
+            <p className="text-sm text-muted">{c.label}</p>
+            <p className="text-2xl font-semibold mt-1 tabular-nums text-foreground">
               {c.value}
             </p>
           </div>
@@ -100,36 +100,39 @@ export function DashboardPage() {
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900 mb-1">
+        <h2 className="text-lg font-semibold text-foreground mb-1">
           Alertas — retirada em até 2 dias
         </h2>
-        <p className="text-sm text-slate-600 mb-3">
+        <p className="text-sm text-muted mb-3">
           Trajes com retirada próxima que ainda precisam de preparação (ajuste
           pendente, lavagem ou etapas antes de “Pronto”).
         </p>
-        <div className="overflow-x-auto rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 to-white shadow-md">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-md">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-amber-200 text-left bg-amber-100/50">
-                <th className="p-3 w-16"></th>
-                <th className="p-3">Cliente</th>
-                <th className="p-3">Traje</th>
-                <th className="p-3">Retirada</th>
-                <th className="p-3">Status</th>
+              <tr className="table-head-row">
+                <th className="w-16"></th>
+                <th>Cliente</th>
+                <th>Traje</th>
+                <th>Retirada</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {data.alertasInteligentes.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-4 text-slate-600">
+                  <td colSpan={5} className="p-4 text-muted">
                     Nenhum alerta no período.
                   </td>
                 </tr>
               )}
               {data.alertasInteligentes.map((a) => (
-                <tr key={a.id} className="border-b border-amber-100/80">
+                <tr
+                  key={a.id}
+                  className="border-b border-line transition-colors hover:bg-pink-soft"
+                >
                   <td className="p-2 pl-3">
-                    <div className="h-12 w-12 rounded-lg border border-amber-200/80 bg-white overflow-hidden flex items-center justify-center shrink-0">
+                    <div className="h-12 w-12 rounded-lg border border-line bg-hover-gray overflow-hidden flex items-center justify-center shrink-0">
                       {a.trajeFotoUrl ? (
                         <img
                           src={a.trajeFotoUrl}
@@ -137,7 +140,7 @@ export function DashboardPage() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <span className="text-[9px] text-amber-800/60 px-0.5 text-center leading-tight">
+                        <span className="text-[9px] text-muted px-0.5 text-center leading-tight">
                           Sem foto
                         </span>
                       )}
@@ -146,7 +149,7 @@ export function DashboardPage() {
                   <td className="p-3">{a.clienteNome}</td>
                   <td className="p-3">
                     <span className="font-medium">{a.trajeNome}</span>
-                    <span className="text-slate-500"> ({a.trajeCodigo})</span>
+                    <span className="text-muted"> ({a.trajeCodigo})</span>
                   </td>
                   <td className="p-3 whitespace-nowrap">
                     {new Date(a.dataRetirada).toLocaleString("pt-BR")}
@@ -154,7 +157,7 @@ export function DashboardPage() {
                   <td className="p-3">
                     <span className="flex flex-wrap gap-1.5 items-center">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassTrajeLocadoComContexto(
+                        className={`inline-flex ${badgeClassTrajeLocadoComContexto(
                           a.status,
                           a.precisaAjuste,
                           a.precisaLavagem,
@@ -172,9 +175,7 @@ export function DashboardPage() {
                         a.status,
                         a.precisaAjuste
                       ) && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassPrecisaAjuste()}`}
-                        >
+                        <span className={`inline-flex ${badgeClassPrecisaAjuste()}`}>
                           Ajuste pendente
                         </span>
                       )}
@@ -188,27 +189,30 @@ export function DashboardPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900 mb-3">
+        <h2 className="text-lg font-semibold text-foreground mb-3">
           Locações com retirada (7 dias)
         </h2>
-        <div className="overflow-x-auto rounded-2xl border border-vera-100 bg-white shadow-md">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-md">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-vera-100 bg-vera-50/80 text-left">
-                <th className="p-3">Cliente</th>
-                <th className="p-3">Retirada</th>
+              <tr className="table-head-row">
+                <th>Cliente</th>
+                <th>Retirada</th>
               </tr>
             </thead>
             <tbody>
               {linhasProximas.length === 0 && (
                 <tr>
-                  <td colSpan={2} className="p-4 text-slate-500">
+                  <td colSpan={2} className="p-4 text-muted">
                     Nenhuma locação neste período.
                   </td>
                 </tr>
               )}
               {linhasProximas.map((l) => (
-                <tr key={l.key} className="border-b border-vera-50">
+                <tr
+                  key={l.key}
+                  className="border-b border-line transition-colors hover:bg-pink-soft"
+                >
                   <td className="p-3">{l.cliente}</td>
                   <td className="p-3">
                     {new Date(l.dataRetirada).toLocaleString("pt-BR")}

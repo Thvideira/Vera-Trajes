@@ -89,7 +89,7 @@ export function labelTrajeLocadoComContexto(
   return LABEL_TRAJE_LOCADO_STATUS[status];
 }
 
-/** Classes do badge principal (âmbar na fase “aguardando ajuste”, não verde “Pronto”). */
+/** Classes do badge principal (alerta na fase “aguardando ajuste”, não verde “Pronto”). */
 export function badgeClassTrajeLocadoComContexto(
   status: TrajeLocadoStatus,
   precisaAjuste: boolean | undefined,
@@ -97,10 +97,10 @@ export function badgeClassTrajeLocadoComContexto(
   lavagemStatus?: string
 ): string {
   if (trajeLocadoNaoProntoParaExibir(status, precisaAjuste)) {
-    return "bg-amber-100 text-amber-950 border border-amber-200";
+    return "status-warning";
   }
   if (trajeLocadoEncaminharLavanderia(status, precisaLavagem, lavagemStatus)) {
-    return "bg-slate-100 text-slate-800 border border-slate-300";
+    return "status-pill-neutral";
   }
   return badgeClassForTrajeStatus(status);
 }
@@ -119,27 +119,27 @@ export function exibirSegundoBadgeAjustePendente(
 /** Badge do status operacional do traje locado (fluxo sequencial). */
 export function badgeClassForTrajeStatus(s: TrajeLocadoStatus): string {
   if (s === "COSTUREIRA") {
-    return "bg-orange-100 text-orange-950 border border-orange-200";
+    return "status-warning";
   }
   if (s === "LAVANDO") {
-    return "bg-sky-100 text-sky-950 border border-sky-200";
+    return "status-info";
   }
   if (s === "FALTA_PASSAR") {
-    return "bg-amber-100 text-amber-950 border border-amber-200";
+    return "status-warning";
   }
   if (s === "PRONTO") {
-    return "bg-emerald-100 text-emerald-900 border border-emerald-200";
+    return "status-success";
   }
   if (s === "RETIRADO") {
-    return "bg-violet-100 text-violet-900 border border-violet-200";
+    return "status-pill-picked";
   }
   if (s === "DEVOLUCAO_FEITA") {
-    return "bg-slate-200 text-slate-800 border border-slate-300";
+    return "status-pill-done";
   }
-  return "bg-slate-100 text-slate-800 border border-slate-200";
+  return "status-pill-neutral";
 }
 
 /** Indicador separado: ajuste pendente (ainda não enviado ou em fila de costura). */
 export function badgeClassPrecisaAjuste(): string {
-  return "bg-rose-50 text-rose-900 border border-rose-200";
+  return "rounded-full border border-primary-light bg-pink-soft px-2 py-0.5 text-xs font-medium text-primary-hover";
 }

@@ -16,23 +16,23 @@ type Props = {
 export function AjustesList({ ajustes, onConcluir, busyId }: Props) {
   if (ajustes.length === 0) {
     return (
-      <p className="text-sm text-slate-500 py-2">Nenhum ajuste neste grupo.</p>
+      <p className="text-sm text-muted py-2">Nenhum ajuste neste grupo.</p>
     );
   }
 
   return (
-    <ul className="divide-y divide-vera-100 border border-vera-100 rounded-xl overflow-hidden bg-vera-50/40">
+    <ul className="divide-y divide-line border border-line rounded-xl overflow-hidden bg-pink-soft/50">
       {ajustes.map((a) => (
         <li
           key={a.id}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 bg-white"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 bg-surface"
         >
           <div className="min-w-0">
-            <p className="font-medium text-slate-900">
+            <p className="font-medium text-foreground">
               {LABEL_AJUSTE_TIPO[a.tipo]}
             </p>
             {a.descricao ? (
-              <p className="text-xs text-slate-600 mt-0.5">{a.descricao}</p>
+              <p className="text-xs text-muted mt-0.5">{a.descricao}</p>
             ) : null}
           </div>
           <button

@@ -56,11 +56,11 @@ function labelPagamentoLocacao(s: string): string {
 function badgePagamentoLocacao(s: string): string {
   switch (s) {
     case "PAGO":
-      return "inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-900 border border-emerald-200";
+      return "status-success";
     case "PARCIAL":
-      return "inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-950 border border-amber-200";
+      return "status-warning";
     default:
-      return "inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200";
+      return "status-pill-neutral";
   }
 }
 
@@ -203,24 +203,24 @@ export function FinanceiroPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Financeiro</h1>
+      <h1 className="text-2xl font-semibold text-foreground">Financeiro</h1>
       <section className="space-y-3">
-        <h2 className="font-medium">Relatório</h2>
+        <h2 className="font-medium text-foreground">Relatório</h2>
         <form onSubmit={loadRel} className="flex flex-wrap gap-2 items-end">
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Início</label>
+            <label className="block text-xs text-muted mb-1">Início</label>
             <input
               type="date"
-              className="rounded-lg border px-3 py-2 text-sm"
+              className="rounded-lg border border-line px-3 py-2 text-sm"
               value={ini}
               onChange={(e) => setIni(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Fim</label>
+            <label className="block text-xs text-muted mb-1">Fim</label>
             <input
               type="date"
-              className="rounded-lg border px-3 py-2 text-sm"
+              className="rounded-lg border border-line px-3 py-2 text-sm"
               value={fim}
               onChange={(e) => setFim(e.target.value)}
             />
@@ -240,14 +240,14 @@ export function FinanceiroPage() {
       </section>
 
       <section className="space-y-3">
-        <div className="flex flex-wrap gap-2 border-b border-vera-100 pb-2">
+        <div className="flex flex-wrap gap-2 border-b border-line pb-2">
           <button
             type="button"
             onClick={() => setAba("pendentes")}
             className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
               aba === "pendentes"
-                ? "bg-vera-500 text-white shadow-md"
-                : "bg-white text-slate-700 border border-vera-100 hover:bg-vera-50"
+                ? "bg-primary text-white shadow-md"
+                : "bg-surface text-foreground border border-line hover:bg-pink-soft"
             }`}
           >
             Pagamentos pendentes
@@ -257,8 +257,8 @@ export function FinanceiroPage() {
             onClick={() => setAba("historico")}
             className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
               aba === "historico"
-                ? "bg-vera-500 text-white shadow-md"
-                : "bg-white text-slate-700 border border-vera-100 hover:bg-vera-50"
+                ? "bg-primary text-white shadow-md"
+                : "bg-surface text-foreground border border-line hover:bg-pink-soft"
             }`}
           >
             Histórico de pagamentos
@@ -267,11 +267,11 @@ export function FinanceiroPage() {
 
         {aba === "pendentes" ? (
           <>
-            <h2 className="font-medium mb-1">Pagamentos pendentes</h2>
-            <p className="text-sm text-slate-600 mb-3">
+            <h2 className="font-medium mb-1 text-foreground">Pagamentos pendentes</h2>
+            <p className="text-sm text-muted mb-3">
               Inclui locações <strong>encerradas</strong> que ainda têm saldo a receber (destacadas
               abaixo). Use <strong>Registrar pagamento</strong> para quitações parciais ou totais.{" "}
-              <span className="text-slate-500">Clique na linha (exceto no botão) para o detalhe.</span>
+              <span className="text-muted">Clique na linha (exceto no botão) para o detalhe.</span>
             </p>
             <button
               type="button"
@@ -280,17 +280,17 @@ export function FinanceiroPage() {
             >
               Recarregar lista
             </button>
-            <div className="overflow-x-auto rounded-xl border border-vera-100 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-xl border border-line bg-surface shadow-sm">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-slate-50 text-left">
-                    <th className="p-3">Locação</th>
-                    <th className="p-3">Cliente</th>
-                    <th className="p-3">Retirada</th>
-                    <th className="p-3">Total</th>
-                    <th className="p-3">Pago</th>
-                    <th className="p-3">Restante</th>
-                    <th className="p-3 w-[1%]">Ações</th>
+                  <tr className="table-head-row">
+                    <th>Locação</th>
+                    <th>Cliente</th>
+                    <th>Retirada</th>
+                    <th>Total</th>
+                    <th>Pago</th>
+                    <th>Restante</th>
+                    <th className="w-[1%]">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -314,19 +314,19 @@ export function FinanceiroPage() {
                           if (e.key === "Enter" || e.key === " ")
                             navigate(`/financeiro/${p.id}`);
                         }}
-                        className={`border-b border-slate-100 cursor-pointer hover:bg-vera-50/80 transition-colors ${
+                        className={`border-b border-line cursor-pointer hover:bg-pink-soft/60 transition-colors ${
                           encerradaComSaldo
-                            ? "bg-amber-50/90 border-l-4 border-l-amber-500"
+                            ? "bg-warning/10 border-l-4 border-l-warning"
                             : ""
                         }`}
                       >
                         <td className="p-3 whitespace-nowrap">
                           {encerradaComSaldo ? (
-                            <span className="inline-flex items-center rounded-full bg-amber-200/80 text-amber-950 px-2 py-0.5 text-xs font-medium">
+                            <span className="status-warning">
                               Encerrada · a receber
                             </span>
                           ) : (
-                            <span className="text-slate-500 text-xs">Em aberto</span>
+                            <span className="text-muted text-xs">Em aberto</span>
                           )}
                           <span className="block text-xs mt-1">
                             <span className={badgePagamentoLocacao(p.statusPagamento)}>
@@ -366,8 +366,8 @@ export function FinanceiroPage() {
           </>
         ) : (
           <>
-            <h2 className="font-medium mb-1">Histórico de pagamentos</h2>
-            <p className="text-sm text-slate-600 mb-3">
+            <h2 className="font-medium mb-1 text-foreground">Histórico de pagamentos</h2>
+            <p className="text-sm text-muted mb-3">
               Registros de valores recebidos por locação, com a situação do pagamento após cada
               lançamento.
             </p>
@@ -378,27 +378,30 @@ export function FinanceiroPage() {
             >
               Recarregar histórico
             </button>
-            <div className="overflow-x-auto rounded-xl border border-vera-100 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-xl border border-line bg-surface shadow-sm">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-slate-50 text-left">
-                    <th className="p-3">Data</th>
-                    <th className="p-3">Cliente</th>
-                    <th className="p-3">Valor pago</th>
-                    <th className="p-3">Tipo</th>
-                    <th className="p-3">Situação da dívida (após)</th>
+                  <tr className="table-head-row">
+                    <th>Data</th>
+                    <th>Cliente</th>
+                    <th>Valor pago</th>
+                    <th>Tipo</th>
+                    <th>Situação da dívida (após)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {hist.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-6 text-center text-slate-500">
+                      <td colSpan={5} className="p-6 text-center text-muted">
                         Nenhum pagamento registrado ainda.
                       </td>
                     </tr>
                   ) : (
                     hist.map((h) => (
-                      <tr key={h.pagamentoId} className="border-b border-slate-100">
+                      <tr
+                        key={h.pagamentoId}
+                        className="border-b border-line transition-colors hover:bg-pink-soft/50"
+                      >
                         <td className="p-3 whitespace-nowrap">
                           {new Date(h.dataPagamento).toLocaleString("pt-BR")}
                         </td>
@@ -406,7 +409,7 @@ export function FinanceiroPage() {
                         <td className="p-3 font-medium tabular-nums">
                           R$ {Number(h.valorPago).toFixed(2)}
                         </td>
-                        <td className="p-3 text-slate-600">
+                        <td className="p-3 text-muted">
                           {labelTipoRegistro(h.tipoRegistro)}
                         </td>
                         <td className="p-3">
@@ -430,7 +433,7 @@ export function FinanceiroPage() {
 
       {registrarPara && (
         <div
-          className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-[1px]"
+          className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-foreground/50 backdrop-blur-[1px]"
           role="presentation"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) fecharRegistrar();
@@ -440,35 +443,35 @@ export function FinanceiroPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="reg-pag-title"
-            className="w-full max-w-md rounded-2xl border border-vera-100 bg-white p-6 shadow-xl"
+            className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-xl"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <h2 id="reg-pag-title" className="text-lg font-semibold text-slate-900">
+            <h2 id="reg-pag-title" className="text-lg font-semibold text-foreground">
               Registrar pagamento
             </h2>
-            <p className="text-sm text-slate-600 mt-1">{registrarPara.cliente.nome}</p>
+            <p className="text-sm text-muted mt-1">{registrarPara.cliente.nome}</p>
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
               <div>
-                <dt className="text-slate-500">Valor total</dt>
+                <dt className="text-muted">Valor total</dt>
                 <dd className="font-medium tabular-nums">
                   R$ {Number(registrarPara.valorTotal).toFixed(2)}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">Já pago</dt>
+                <dt className="text-muted">Já pago</dt>
                 <dd className="font-medium tabular-nums">
                   R$ {Number(registrarPara.valorPago).toFixed(2)}
                 </dd>
               </div>
               <div className="col-span-2">
-                <dt className="text-slate-500">Restante</dt>
-                <dd className="font-semibold text-amber-900 tabular-nums">
+                <dt className="text-muted">Restante</dt>
+                <dd className="font-semibold text-warning-fg tabular-nums">
                   R$ {restantePendente(registrarPara).toFixed(2)}
                 </dd>
               </div>
             </dl>
             <div className="mt-4">
-              <label htmlFor="valor-pagamento" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="valor-pagamento" className="block text-sm font-medium text-foreground mb-1">
                 Valor deste pagamento (R$)
               </label>
               <input
@@ -481,7 +484,7 @@ export function FinanceiroPage() {
                 value={valorPagamento}
                 onChange={(e) => setValorPagamento(e.target.value)}
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted mt-1">
                 Máximo: R$ {restantePendente(registrarPara).toFixed(2)} — use ponto ou vírgula
                 como decimal.
               </p>
@@ -513,9 +516,9 @@ export function FinanceiroPage() {
 
 function Card({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border bg-white p-4">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="text-xl font-semibold mt-1">{value}</p>
+    <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
+      <p className="text-sm text-muted">{label}</p>
+      <p className="text-xl font-semibold mt-1 tabular-nums text-foreground">{value}</p>
     </div>
   );
 }

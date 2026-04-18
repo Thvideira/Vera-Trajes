@@ -96,25 +96,25 @@ function TrajeThumb({
         type="button"
         disabled={!clickable}
         onClick={() => fotoUrl && onOpenPreview?.(fotoUrl)}
-        className={`shrink-0 rounded-lg border border-slate-200 bg-slate-100 overflow-hidden ${sizeClass} flex items-center justify-center ${
-          clickable ? "cursor-zoom-in hover:ring-2 hover:ring-slate-400" : "cursor-default"
+        className={`shrink-0 rounded-lg border border-line bg-hover-gray overflow-hidden ${sizeClass} flex items-center justify-center ${
+          clickable ? "cursor-zoom-in hover:ring-2 hover:ring-primary/35" : "cursor-default"
         }`}
         aria-label={clickable ? `Ampliar foto de ${nome}` : undefined}
       >
         {fotoUrl ? (
           <img src={fotoUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="text-[10px] text-slate-400 px-1 text-center">Sem foto</span>
+          <span className="text-[10px] text-muted px-1 text-center">Sem foto</span>
         )}
       </button>
       <div className="min-w-0 flex-1">
         <p className="font-medium text-sm truncate">
           {nome}{" "}
-          <span className="text-slate-500 font-normal">({codigo})</span>
+          <span className="text-muted font-normal">({codigo})</span>
         </p>
         <div className="mt-1 flex flex-wrap gap-1.5 items-center">
           <span
-            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassTrajeLocadoComContexto(
+            className={`inline-flex ${badgeClassTrajeLocadoComContexto(
               status,
               precisaAjuste,
               precisaLavagem,
@@ -129,9 +129,7 @@ function TrajeThumb({
             )}
           </span>
           {exibirSegundoBadgeAjustePendente(status, precisaAjuste) ? (
-            <span
-              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeClassPrecisaAjuste()}`}
-            >
+            <span className={`inline-flex ${badgeClassPrecisaAjuste()}`}>
               Ajuste pendente
             </span>
           ) : null}
@@ -200,12 +198,12 @@ export function LocacoesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Locações</h1>
-        <p className="text-sm text-slate-600">Retiradas agrupadas por data</p>
+        <h1 className="text-2xl font-semibold text-foreground">Locações</h1>
+        <p className="text-sm text-muted">Retiradas agrupadas por data</p>
       </div>
       <div className="flex flex-wrap gap-4 items-end">
         <div className="flex gap-2 flex-wrap items-center">
-          <label className="text-sm text-slate-600">Situação:</label>
+          <label className="text-sm text-muted">Situação:</label>
           <select
             className="input-field w-auto max-w-[200px] py-2 text-sm"
             value={filtroEncerrada}
@@ -217,7 +215,7 @@ export function LocacoesPage() {
           </select>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <label className="text-sm text-slate-600 whitespace-nowrap">
+          <label className="text-sm text-muted whitespace-nowrap">
             Data do evento:
           </label>
           <input
@@ -236,22 +234,22 @@ export function LocacoesPage() {
             </button>
           )}
         </div>
-        <p className="text-xs text-slate-500 w-full sm:w-auto sm:max-w-md">
+        <p className="text-xs text-muted w-full sm:w-auto sm:max-w-md">
           Exibe locações cujo <strong>evento</strong> está na data escolhida (trajes
           dessas locações). Locações sem data de evento não aparecem com o filtro ativo.
         </p>
       </div>
-      <div className="overflow-x-auto rounded-2xl border border-vera-100 bg-white shadow-md">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-md">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b bg-slate-50 text-left">
-              <th className="p-3">Cliente</th>
-              <th className="p-3">Aluguel</th>
-              <th className="p-3 whitespace-nowrap">Evento</th>
-              <th className="p-3 min-w-[220px]">Trajes</th>
-              <th className="p-3">Situação</th>
-              <th className="p-3">Total</th>
-              <th className="p-3"></th>
+            <tr className="table-head-row">
+              <th>Cliente</th>
+              <th>Aluguel</th>
+              <th className="whitespace-nowrap">Evento</th>
+              <th className="min-w-[220px]">Trajes</th>
+              <th>Situação</th>
+              <th>Total</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -265,12 +263,15 @@ export function LocacoesPage() {
               list.map((l) => {
                 const trajesFlat = (l.retiradas ?? []).flatMap((r) => r.trajesLocados);
                 return (
-                  <tr key={l.id} className="border-b border-slate-100 align-top">
+                  <tr
+                    key={l.id}
+                    className="border-b border-line align-top transition-colors hover:bg-pink-soft"
+                  >
                     <td className="p-3">{l.cliente.nome}</td>
                     <td className="p-3 whitespace-nowrap">
                       {new Date(l.dataAluguel).toLocaleDateString("pt-BR")}
                     </td>
-                    <td className="p-3 whitespace-nowrap text-slate-700">
+                    <td className="p-3 whitespace-nowrap text-foreground">
                       {l.dataEvento
                         ? new Date(l.dataEvento).toLocaleString("pt-BR", {
                             dateStyle: "short",
@@ -281,7 +282,7 @@ export function LocacoesPage() {
                     <td className="p-3">
                       <div className="space-y-3 max-w-md">
                         {trajesFlat.length === 0 ? (
-                          <span className="text-slate-400">—</span>
+                          <span className="text-muted">—</span>
                         ) : (
                           trajesFlat.map((tl) => (
                             <TrajeThumb
@@ -301,16 +302,19 @@ export function LocacoesPage() {
                     </td>
                     <td className="p-3">
                       {l.encerrada ? (
-                        <span className="text-slate-500">Encerrada</span>
+                        <span className="text-muted">Encerrada</span>
                       ) : (
-                        <span className="text-emerald-700">Em aberto</span>
+                        <span className="text-success">Em aberto</span>
                       )}
                     </td>
                     <td className="p-3 whitespace-nowrap">
                       R$ {Number(l.valorTotal).toLocaleString("pt-BR")}
                     </td>
                     <td className="p-3 whitespace-nowrap">
-                      <Link to={`/locacoes/${l.id}`} className="underline">
+                      <Link
+                        to={`/locacoes/${l.id}`}
+                        className="text-primary font-medium underline underline-offset-2 hover:text-primary-hover"
+                      >
                         Abrir
                       </Link>
                     </td>
@@ -491,11 +495,14 @@ export function LocacaoNovaPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <h1 className="text-2xl font-semibold">Nova locação</h1>
-      <p className="text-sm text-slate-600">
+      <h1 className="text-2xl font-semibold text-foreground">Nova locação</h1>
+      <p className="text-sm text-muted">
         A data do aluguel é registrada automaticamente ao salvar.
       </p>
-      <form onSubmit={onSubmit} className="space-y-4 bg-white p-6 rounded-xl border">
+      <form
+        onSubmit={onSubmit}
+        className="space-y-4 bg-surface p-6 rounded-xl border border-line shadow-sm"
+      >
         <div>
           <label className="block text-sm font-medium mb-1">Cliente</label>
           <select
@@ -539,7 +546,7 @@ export function LocacaoNovaPage() {
                 setForm((f) => ({ ...f, dataEvento: e.target.value }))
               }
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted mt-1">
               Obrigatória: sem ela não é possível alugar trajes; usada na regra dos 5 dias entre locações do mesmo traje.
             </p>
           </div>
@@ -595,7 +602,7 @@ export function LocacaoNovaPage() {
             <div>
               <span className="font-medium">Retiradas</span>
               {temRetiradaVaziaNoFormulario && (
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-xs text-warning-fg mt-1">
                   Retirada sem data ou sem traje será ignorada ao salvar.
                 </p>
               )}
@@ -603,13 +610,13 @@ export function LocacaoNovaPage() {
             <button
               type="button"
               onClick={addRetirada}
-              className="text-sm text-slate-900 underline shrink-0"
+              className="text-sm text-foreground underline shrink-0"
             >
               + Outra retirada
             </button>
           </div>
           {retiradas.map((ret, ri) => (
-            <div key={ri} className="border rounded-xl p-4 space-y-3 bg-slate-50/50">
+            <div key={ri} className="border rounded-xl p-4 space-y-3 bg-hover-gray/70">
               <div className="flex flex-wrap justify-between gap-2 items-start">
                 <div className="flex-1 min-w-[200px]">
                   <label className="block text-sm font-medium mb-1">
@@ -640,7 +647,7 @@ export function LocacaoNovaPage() {
                 )}
               </div>
               {ret.trajes.map((tr, ti) => (
-                <div key={ti} className="border rounded-lg p-3 bg-white space-y-2">
+                <div key={ti} className="border rounded-lg p-3 bg-surface space-y-2">
                   <TrajePicker
                     incluirTrajesEmUso
                     value={tr.trajeId}
@@ -817,7 +824,7 @@ export function TrajePicker({
     <div>
       <label className="block text-sm font-medium mb-1">Traje</label>
       <select
-        className="w-full rounded-lg border border-slate-300 px-3 py-2"
+        className="w-full rounded-lg border border-line px-3 py-2"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -938,9 +945,9 @@ export function LocacaoDetailPage({ id }: { id: string }) {
   return (
     <div className="space-y-8 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-semibold">Locação</h1>
-        <p className="text-slate-600">{loc.cliente.nome}</p>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-semibold text-foreground">Locação</h1>
+        <p className="text-muted">{loc.cliente.nome}</p>
+        <p className="text-sm text-muted mt-1">
           Aluguel em{" "}
           {new Date(loc.dataAluguel).toLocaleString("pt-BR")}{" "}
           · {loc.encerrada ? "Encerrada" : "Em aberto"}
@@ -948,12 +955,12 @@ export function LocacaoDetailPage({ id }: { id: string }) {
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4 text-sm">
-        <div className="rounded-2xl border border-vera-100 bg-white p-4 shadow-md">
-          <p className="text-slate-500">Pagamento</p>
+        <div className="rounded-2xl border border-line bg-surface p-4 shadow-md">
+          <p className="text-muted">Pagamento</p>
           <p className="font-medium">{loc.statusPagamento}</p>
         </div>
-        <div className="rounded-2xl border border-vera-100 bg-white p-4 shadow-md">
-          <p className="text-slate-500">Valores</p>
+        <div className="rounded-2xl border border-line bg-surface p-4 shadow-md">
+          <p className="text-muted">Valores</p>
           <p>Total: R$ {Number(loc.valorTotal).toFixed(2)}</p>
           <p>Pago: R$ {Number(loc.valorPago).toFixed(2)}</p>
           <p>Restante: R$ {restante.toFixed(2)}</p>
@@ -963,9 +970,9 @@ export function LocacaoDetailPage({ id }: { id: string }) {
       {!loc.encerrada && (
         <form
           onSubmit={salvarObservacoes}
-          className="rounded-2xl border border-vera-100 bg-white p-4 shadow-md space-y-2"
+          className="rounded-2xl border border-line bg-surface p-4 shadow-md space-y-2"
         >
-          <p className="font-medium text-slate-900">Observações da locação</p>
+          <p className="font-medium text-foreground">Observações da locação</p>
           <textarea
             className="input-field"
             rows={3}
@@ -982,7 +989,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
       {!loc.encerrada && (
         <form
           onSubmit={pagamento}
-          className="rounded-2xl border border-vera-100 bg-white p-4 space-y-2 shadow-md"
+          className="rounded-2xl border border-line bg-surface p-4 space-y-2 shadow-md"
         >
           <p className="font-medium">Registrar pagamento</p>
           <div className="flex flex-wrap gap-2">
@@ -1012,24 +1019,24 @@ export function LocacaoDetailPage({ id }: { id: string }) {
       )}
 
       <section className="space-y-4">
-        <h2 className="text-lg font-medium text-slate-900">Retiradas e trajes</h2>
+        <h2 className="text-lg font-medium text-foreground">Retiradas e trajes</h2>
         {loc.retiradas.map((r) => (
           <div
             key={r.id}
-            className="rounded-2xl border border-vera-100 bg-white overflow-hidden shadow-md"
+            className="rounded-2xl border border-line bg-surface overflow-hidden shadow-md"
           >
-            <div className="px-4 py-2 bg-gradient-to-r from-vera-50 to-white border-b border-vera-100 flex flex-wrap justify-between gap-2">
+            <div className="px-4 py-2 bg-gradient-to-r from-pink-soft to-white border-b border-line flex flex-wrap justify-between gap-2">
               <span className="font-medium">
                 Retirada: {new Date(r.dataRetirada).toLocaleString("pt-BR")}
               </span>
-              <span className="text-sm text-slate-600">
+              <span className="text-sm text-muted">
                 {LABEL_RETIRADA_STATUS[r.status]}
               </span>
             </div>
             {!loc.encerrada && (
-              <div className="px-4 py-3 bg-vera-50/40 border-b border-vera-100 space-y-4">
+              <div className="px-4 py-3 bg-pink-soft/50 border-b border-line space-y-4">
                 <div>
-                  <p className="text-xs font-medium text-slate-600 mb-1">
+                  <p className="text-xs font-medium text-muted mb-1">
                     Alterar data / hora da retirada
                   </p>
                   <div className="flex flex-wrap gap-2 items-end">
@@ -1053,8 +1060,8 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                     </button>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-vera-100">
-                  <p className="text-xs font-medium text-slate-600 mb-2">
+                <div className="pt-2 border-t border-line">
+                  <p className="text-xs font-medium text-muted mb-2">
                     Incluir traje nesta retirada
                   </p>
                   <div className="flex flex-wrap gap-2 items-end">
@@ -1081,7 +1088,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                 </div>
               </div>
             )}
-            <ul className="divide-y divide-vera-50">
+            <ul className="divide-y divide-line">
               {r.trajesLocados.map((tl) => (
                 <li key={tl.id} className="p-4 space-y-3">
                   <div className="space-y-2">
@@ -1095,12 +1102,12 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                       lavagemStatus={tl.lavagemStatus}
                       onOpenPreview={setFotoModal}
                     />
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted">
                       Lavagem: {tl.precisaLavagem ? tl.lavagemStatus : "Não aplicável"}{" "}
                       · Precisa lavagem: {tl.precisaLavagem ? "sim" : "não"}
                     </p>
                   </div>
-                  <ul className="text-sm text-slate-600 space-y-1">
+                  <ul className="text-sm text-muted space-y-1">
                     {tl.ajustes.map((a) => (
                       <li key={a.id} className="flex flex-wrap gap-2 items-center">
                         <span>
@@ -1110,7 +1117,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                         {a.status === "PENDENTE" && (
                           <button
                             type="button"
-                            className="text-xs underline text-slate-900"
+                            className="text-xs underline text-foreground"
                             onClick={() => void concluirAjuste(a.id)}
                           >
                             Concluir ajuste
@@ -1124,7 +1131,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                       {tl.status === "PRONTO" && tl.precisaAjuste && (
                         <button
                           type="button"
-                          className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-900"
+                          className="btn-chip"
                           onClick={() =>
                             void doAction(
                               `/api/trajes-locados/${tl.id}/costureira/encaminhar`,
@@ -1139,7 +1146,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                         tl.lavagemStatus === "PENDENTE" && (
                           <button
                             type="button"
-                            className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1 text-xs"
+                            className="btn-chip"
                             onClick={() =>
                               void doAction(
                                 `/api/trajes-locados/${tl.id}/lavagem/iniciar`,
@@ -1154,7 +1161,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                         tl.lavagemStatus === "EM_ANDAMENTO" && (
                           <button
                             type="button"
-                            className="rounded-lg border px-3 py-1 text-xs"
+                            className="btn-chip"
                             onClick={() =>
                               void doAction(
                                 `/api/trajes-locados/${tl.id}/lavagem/concluir`,
@@ -1164,11 +1171,11 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                           >
                             Lavagem feita
                           </button>
-                        )}
+                      )}
                       {tl.status === "FALTA_PASSAR" && (
                         <button
                           type="button"
-                          className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium"
+                          className="btn-chip"
                           onClick={() =>
                             void doAction(
                               `/api/trajes-locados/${tl.id}/marcar-pronto`,
@@ -1182,7 +1189,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                       {tl.status === "PRONTO" && !tl.precisaAjuste && (
                         <button
                           type="button"
-                          className="rounded-lg border px-3 py-1 text-xs"
+                          className="btn-chip"
                           onClick={() =>
                             void doAction(`/api/trajes-locados/${tl.id}/retirado`, "POST")
                           }
@@ -1193,7 +1200,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                       {tl.status === "RETIRADO" && (
                         <button
                           type="button"
-                          className="rounded-lg border px-3 py-1 text-xs"
+                          className="btn-chip"
                           onClick={() =>
                             void doAction(
                               `/api/trajes-locados/${tl.id}/finalizado`,

@@ -1,50 +1,164 @@
 @import "tailwindcss";
 
-/* Loja Vera — paleta rosa elegante */
+/**
+ * Loja Vera — paleta: rosa (#E91E63) como primária + neutros (#F5F5F5, #FFF, #E0E0E0).
+ * Rosa só em destaque (primário, cabeçalhos de tabela, links); fundo predominante claro.
+ */
 @theme {
+  --color-background: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-line: #e0e0e0;
+  --color-foreground: #212121;
+  --color-muted: #757575;
+
+  --color-primary: #e91e63;
+  --color-primary-hover: #c2185b;
+  --color-primary-light: #f8bbd0;
+
+  --color-success: #4caf50;
+  --color-warning: #ff9800;
+  --color-warning-fg: #e65100;
+  --color-error: #f44336;
+  --color-info: #2196f3;
+
+  --color-pink-soft: #fce4ec;
+  --color-hover-light: #f3e5f5;
+  --color-hover-gray: #eeeeee;
+
+  /* Alias “vera” (gradiente sidebar, focos) — alinhado à paleta */
   --color-vera-50: #fce4ec;
   --color-vera-100: #f8bbd0;
   --color-vera-500: #e91e63;
-  --color-vera-700: #ad1457;
+  --color-vera-700: #c2185b;
   --color-vera-900: #880e4f;
+
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 body {
-  @apply bg-vera-50 text-slate-900 antialiased;
+  @apply bg-background text-foreground antialiased;
 }
 
 @layer components {
+  /* Cabeçalho de tabela — rosa forte + texto branco */
+  .table-head-row {
+    @apply border-b text-left text-white;
+    background-color: var(--color-primary);
+  }
+  .table-head-row th,
+  .table-head-row td {
+    @apply p-3 font-medium;
+    border-color: rgb(255 255 255 / 0.2);
+  }
+
+  /* Botões */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-200;
-    background-color: var(--color-vera-500);
+    background-color: var(--color-primary);
   }
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-vera-700);
+    background-color: var(--color-primary-hover);
     @apply shadow-lg;
   }
   .btn-primary:disabled {
-    @apply opacity-50 cursor-not-allowed;
+    @apply cursor-not-allowed opacity-50;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border-2 bg-white px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200;
-    border-color: var(--color-vera-100);
-    color: var(--color-vera-700);
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border bg-surface px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition-all duration-200;
+    border-color: var(--color-line);
   }
   .btn-secondary:hover:not(:disabled) {
-    @apply bg-vera-50 border-vera-100;
+    background-color: var(--color-hover-gray);
+    border-color: var(--color-line);
+  }
+  .btn-secondary:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  /* Cards / painéis */
+  .card-surface {
+    @apply rounded-2xl border bg-surface p-4 shadow-md;
+    border-color: var(--color-line);
   }
 
   .card-dashboard {
-    @apply rounded-2xl border border-white/80 bg-white p-5 shadow-md transition-transform duration-300 ease-out;
+    @apply rounded-2xl border border-line bg-surface p-5 shadow-md transition-transform duration-300 ease-out;
   }
   .card-dashboard:hover {
-    @apply shadow-lg scale-[1.02];
+    @apply scale-[1.02] shadow-lg;
   }
 
   .input-field {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-vera-500 focus:outline-none focus:ring-2 focus:ring-vera-100;
+    @apply w-full rounded-xl border bg-surface px-3 py-2 text-sm text-foreground shadow-sm transition-colors focus:outline-none focus:ring-2;
+    border-color: var(--color-line);
+  }
+  .input-field:focus {
+    border-color: var(--color-primary);
+    --tw-ring-color: color-mix(in srgb, var(--color-primary-light) 70%, transparent);
+  }
+
+  /* Status (badges / pills) */
+  .status-success {
+    @apply inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium;
+    background-color: color-mix(in srgb, var(--color-success) 14%, white);
+    border-color: color-mix(in srgb, var(--color-success) 38%, white);
+    color: #1b5e20;
+  }
+  .status-warning {
+    @apply inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium;
+    background-color: color-mix(in srgb, var(--color-warning) 16%, white);
+    border-color: color-mix(in srgb, var(--color-warning) 42%, white);
+    color: #e65100;
+  }
+  .status-error {
+    @apply inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium;
+    background-color: color-mix(in srgb, var(--color-error) 14%, white);
+    border-color: color-mix(in srgb, var(--color-error) 38%, white);
+    color: #c62828;
+  }
+  .status-info {
+    @apply inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium;
+    background-color: color-mix(in srgb, var(--color-info) 14%, white);
+    border-color: color-mix(in srgb, var(--color-info) 38%, white);
+    color: #1565c0;
+  }
+
+  /* Pills operacionais (trajes) — sem âmbar */
+  .status-pill-neutral {
+    @apply inline-flex items-center justify-center rounded-full border border-line bg-hover-gray px-2 py-0.5 text-xs font-medium text-foreground;
+  }
+  .status-pill-stage {
+    @apply rounded-lg border px-3 py-1 text-xs font-medium;
+    background-color: color-mix(in srgb, var(--color-warning) 12%, white);
+    border-color: color-mix(in srgb, var(--color-warning) 35%, white);
+    color: #bf360c;
+  }
+  .status-pill-laundry {
+    @apply rounded-lg border px-3 py-1 text-xs font-medium;
+    background-color: color-mix(in srgb, var(--color-info) 12%, white);
+    border-color: color-mix(in srgb, var(--color-info) 35%, white);
+    color: #0d47a1;
+  }
+  .status-pill-ready {
+    @apply rounded-lg border px-3 py-1 text-xs font-medium;
+    background-color: color-mix(in srgb, var(--color-success) 12%, white);
+    border-color: color-mix(in srgb, var(--color-success) 35%, white);
+    color: #1b5e20;
+  }
+  .status-pill-picked {
+    @apply inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium;
+    background-color: color-mix(in srgb, var(--color-hover-light) 80%, white);
+    border-color: #ce93d8;
+    color: #4a148c;
+  }
+  .status-pill-done {
+    @apply rounded-lg border border-line bg-hover-gray px-3 py-1 text-xs font-medium text-foreground;
+  }
+
+  /** Ações em linha (tabelas / detalhe de locação) — neutro com hover rosa suave */
+  .btn-chip {
+    @apply rounded-lg border border-line bg-surface px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-pink-soft;
   }
 }

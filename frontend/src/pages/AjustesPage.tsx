@@ -48,7 +48,7 @@ function groupRowsByTrajeLocado(rows: Row[]): [string, Row[]][] {
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
     <svg
-      className={`h-5 w-5 text-slate-500 transition-transform duration-200 ${
+      className={`h-5 w-5 text-muted transition-transform duration-200 ${
         expanded ? "rotate-180" : ""
       }`}
       xmlns="http://www.w3.org/2000/svg"
@@ -108,15 +108,15 @@ export function AjustesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Ajustes pendentes</h1>
-        <p className="text-sm text-slate-600 mt-1">
+        <h1 className="text-2xl font-semibold text-foreground">Ajustes pendentes</h1>
+        <p className="text-sm text-muted mt-1">
           Uma linha por traje na locação. Expanda para ver e concluir cada ajuste.
         </p>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-vera-100 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface shadow-sm">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b bg-slate-50 text-left">
+            <tr className="table-head-row">
               <th className="p-3 w-10" aria-hidden />
               <th className="p-3">Cliente</th>
               <th className="p-3">Traje</th>
@@ -129,7 +129,7 @@ export function AjustesPage() {
           <tbody>
             {grupos.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-4 text-slate-500">
+                <td colSpan={7} className="p-4 text-muted">
                   Nenhum ajuste pendente.
                 </td>
               </tr>
@@ -146,14 +146,14 @@ export function AjustesPage() {
               return (
                 <Fragment key={trajeLocadoId}>
                   <tr
-                    className={`border-b border-slate-100 transition-colors ${
-                      expanded ? "bg-vera-50/60" : "hover:bg-vera-50/40"
+                    className={`border-b border-line transition-colors ${
+                      expanded ? "bg-pink-soft/70" : "hover:bg-pink-soft/50"
                     }`}
                   >
                     <td className="p-2 align-middle">
                       <button
                         type="button"
-                        className="p-1.5 rounded-lg hover:bg-white border border-transparent hover:border-vera-100 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-surface border border-transparent hover:border-line transition-colors"
                         aria-expanded={expanded}
                         aria-label={
                           expanded ? "Recolher ajustes" : "Expandir ajustes"
@@ -163,17 +163,17 @@ export function AjustesPage() {
                         <ChevronIcon expanded={expanded} />
                       </button>
                     </td>
-                    <td className="p-3 align-middle font-medium text-slate-900">
+                    <td className="p-3 align-middle font-medium text-foreground">
                       {first.trajeLocado.retirada.locacao.cliente.nome}
                     </td>
                     <td className="p-3 align-middle">
-                      <span className="text-slate-800">
+                      <span className="text-foreground">
                         {first.trajeLocado.traje.codigo}
                       </span>
-                      <span className="text-slate-500"> — </span>
+                      <span className="text-muted"> — </span>
                       <span>{first.trajeLocado.traje.nome}</span>
                     </td>
-                    <td className="p-3 align-middle whitespace-nowrap text-slate-700">
+                    <td className="p-3 align-middle whitespace-nowrap text-foreground">
                       {new Date(
                         first.trajeLocado.retirada.dataRetirada
                       ).toLocaleString("pt-BR")}
@@ -185,14 +185,14 @@ export function AjustesPage() {
                       )}
                     </td>
                     <td className="p-3 align-middle text-center">
-                      <span className="inline-flex min-w-[2rem] justify-center rounded-full bg-amber-100 text-amber-950 px-2 py-0.5 text-xs font-semibold tabular-nums">
+                      <span className="status-warning min-w-[2rem] justify-center px-2 py-0.5 font-semibold tabular-nums">
                         {lista.length}
                       </span>
                     </td>
                     <td className="p-3 align-middle">
                       <button
                         type="button"
-                        className="text-sm font-medium text-vera-700 hover:text-vera-900 underline-offset-2 hover:underline"
+                        className="text-sm font-medium text-primary hover:text-primary-hover underline-offset-2 hover:underline"
                         aria-expanded={expanded}
                         onClick={() => toggleExpand(trajeLocadoId)}
                       >
@@ -201,9 +201,9 @@ export function AjustesPage() {
                     </td>
                   </tr>
                   {expanded && (
-                    <tr className="border-b border-vera-100 bg-vera-50/30">
+                    <tr className="border-b border-line bg-pink-soft/40">
                       <td colSpan={7} className="p-4 pt-2">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+                        <p className="text-xs font-medium text-muted uppercase tracking-wide mb-2">
                           Ajustes deste traje
                         </p>
                         <AjustesList

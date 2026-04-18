@@ -159,19 +159,25 @@ function toneClasses(type: PopupType): { iconWrap: string; icon: string } {
   switch (type) {
     case "success":
       return {
-        iconWrap: "bg-emerald-100 text-emerald-700",
-        icon: "text-emerald-700",
+        iconWrap: "bg-success/15 text-[#1b5e20]",
+        icon: "text-[#1b5e20]",
       };
     case "error":
-      return { iconWrap: "bg-red-100 text-red-700", icon: "text-red-700" };
+      return {
+        iconWrap: "bg-error/15 text-[#c62828]",
+        icon: "text-[#c62828]",
+      };
     case "warning":
       return {
-        iconWrap: "bg-amber-100 text-amber-700",
-        icon: "text-amber-700",
+        iconWrap: "bg-warning/15 text-warning-fg",
+        icon: "text-warning-fg",
       };
     case "info":
     default:
-      return { iconWrap: "bg-sky-100 text-sky-700", icon: "text-sky-700" };
+      return {
+        iconWrap: "bg-info/15 text-[#1565c0]",
+        icon: "text-[#1565c0]",
+      };
   }
 }
 
@@ -195,7 +201,7 @@ function PopupLayer({
 
   return (
     <div
-      className={`popup-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/55 backdrop-blur-[2px] ${leaving ? "popup-overlay--leave" : ""}`}
+      className={`popup-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-foreground/55 backdrop-blur-[2px] ${leaving ? "popup-overlay--leave" : ""}`}
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onBackdropPointerDown();
@@ -206,7 +212,7 @@ function PopupLayer({
         aria-modal="true"
         aria-labelledby="popup-title"
         aria-describedby="popup-desc"
-        className={`popup-dialog relative w-full max-w-[min(100%,420px)] rounded-2xl border border-vera-100 bg-white p-5 shadow-xl dark:border-vera-700 dark:bg-vera-900 ${leaving ? "popup-dialog--leave" : ""}`}
+        className={`popup-dialog relative w-full max-w-[min(100%,420px)] rounded-2xl border border-line bg-surface p-5 shadow-xl ${leaving ? "popup-dialog--leave" : ""}`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex gap-4">
@@ -218,13 +224,13 @@ function PopupLayer({
           <div className="min-w-0 flex-1 pt-0.5">
             <h2
               id="popup-title"
-              className="text-lg font-semibold text-slate-900 dark:text-vera-50"
+              className="text-lg font-semibold text-foreground"
             >
               {popup.title}
             </h2>
             <p
               id="popup-desc"
-              className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-vera-100/90 whitespace-pre-wrap"
+              className="mt-2 text-sm leading-relaxed text-muted whitespace-pre-wrap"
             >
               {popup.message}
             </p>
@@ -245,7 +251,7 @@ function PopupLayer({
             type="button"
             className={
               popup.danger
-                ? "inline-flex w-full items-center justify-center rounded-xl border-2 border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-700 shadow-sm transition-colors hover:bg-red-50 sm:w-auto dark:border-red-800 dark:bg-vera-900 dark:text-red-200 dark:hover:bg-red-950/40"
+                ? "inline-flex w-full items-center justify-center rounded-xl border-2 border-red-200 bg-surface px-4 py-2.5 text-sm font-medium text-red-700 shadow-sm transition-colors hover:bg-red-50 sm:w-auto"
                 : "btn-primary w-full sm:w-auto"
             }
             onClick={onConfirm}

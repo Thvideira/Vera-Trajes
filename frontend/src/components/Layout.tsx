@@ -69,16 +69,16 @@ export function Layout() {
   }, [state, pathname, search, hash, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-vera-50">
+    <div className="min-h-screen flex flex-col md:flex-row bg-background">
       <aside className="flex flex-col md:min-h-screen bg-gradient-to-b from-vera-900 to-vera-700 text-white md:w-56 shrink-0 shadow-xl">
         <div className="p-4 border-b border-white/10">
           <Link
             to={isMobile ? "/trajes/novo" : "/"}
-            className="text-lg font-semibold tracking-tight text-white hover:text-vera-100 transition-colors"
+            className="text-lg font-semibold tracking-tight text-white hover:text-primary-light transition-colors"
           >
             Loja Vera
           </Link>
-          <p className="text-xs text-vera-100/90 mt-1">
+          <p className="text-xs text-primary-light/90 mt-1">
             {isMobile ? "Cadastro de trajes" : "Aluguel de trajes"}
           </p>
         </div>
@@ -92,7 +92,7 @@ export function Layout() {
                 `rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${
                   isActive
                     ? "bg-white/15 font-medium text-white shadow-inner"
-                    : "text-vera-100 hover:bg-white/10 hover:text-white"
+                    : "text-primary-light hover:bg-white/10 hover:text-white"
                 }`
               }
             >
@@ -100,7 +100,7 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="p-3 mt-auto border-t border-white/10 text-xs text-vera-100/80">
+        <div className="p-3 mt-auto border-t border-white/10 text-xs text-primary-light/80">
           <Link
             to="/login"
             className="hover:text-white transition-colors"
@@ -121,13 +121,13 @@ export function Layout() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-40 border-b border-vera-100 bg-white/90 backdrop-blur-md shadow-sm">
+        <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur-md shadow-sm">
           <div className="px-4 md:px-8 py-3 flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-lg md:text-xl font-semibold text-slate-900">
+              <h1 className="text-lg md:text-xl font-semibold text-foreground">
                 {pageTitle}
               </h1>
-              <p className="text-xs text-slate-500 hidden sm:block">
+              <p className="text-xs text-muted hidden sm:block">
                 {isMobile
                   ? "Perfil mobile — cadastro e foto"
                   : "Gestão operacional e financeira"}

@@ -44,13 +44,10 @@ export function ClientesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Clientes</h1>
-          <p className="text-slate-600 text-sm">Cadastro e busca por nome ou CPF</p>
+          <h1 className="text-2xl font-semibold text-foreground">Clientes</h1>
+          <p className="text-muted text-sm">Cadastro e busca por nome ou CPF</p>
         </div>
-        <Link
-          to="/clientes/novo"
-          className="inline-flex justify-center rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800"
-        >
+        <Link to="/clientes/novo" className="btn-primary text-sm">
           Novo cliente
         </Link>
       </div>
@@ -62,23 +59,20 @@ export function ClientesPage() {
         }}
       >
         <input
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm flex-1 min-w-[200px]"
+          className="rounded-lg border border-line px-3 py-2 text-sm flex-1 min-w-[200px]"
           placeholder="Buscar…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <button
-          type="submit"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
-        >
+        <button type="submit" className="btn-secondary text-sm py-2 px-4">
           Filtrar
         </button>
       </form>
       {err && <p className="text-red-600 text-sm">{err}</p>}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left">
+            <tr className="table-head-row">
               <th className="p-3">Nome</th>
               <th className="p-3">Telefone</th>
               <th className="p-3">CPF</th>
@@ -95,7 +89,10 @@ export function ClientesPage() {
               </tr>
             ) : (
               list.map((c) => (
-                <tr key={c.id} className="border-b border-slate-100">
+                <tr
+                  key={c.id}
+                  className="border-b border-line transition-colors hover:bg-pink-soft"
+                >
                   <td className="p-3 font-medium">{c.nome}</td>
                   <td className="p-3">{c.telefone}</td>
                   <td className="p-3">{c.cpf}</td>
@@ -103,7 +100,7 @@ export function ClientesPage() {
                   <td className="p-3">
                     <Link
                       to={`/clientes/${c.id}`}
-                      className="text-slate-900 underline"
+                      className="font-medium text-primary underline underline-offset-2 hover:text-primary-hover"
                     >
                       Editar
                     </Link>
@@ -202,19 +199,19 @@ export function ClienteFormPage({ id }: { id?: string }) {
       <h1 className="text-2xl font-semibold">
         {isNew ? "Novo cliente" : "Editar cliente"}
       </h1>
-      <form onSubmit={onSubmit} className="space-y-4 bg-white p-6 rounded-xl border border-slate-200">
+      <form onSubmit={onSubmit} className="space-y-4 bg-surface p-6 rounded-xl border border-line">
         {[
           ["nome", "Nome completo"],
           ["telefone", "Telefone (WhatsApp)"],
           ["cpf", "CPF"],
         ].map(([k, label]) => (
           <div key={k}>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {label}
             </label>
             <input
               required={k !== "complemento"}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-line px-3 py-2"
               value={form[k as keyof typeof form] as string}
               onChange={(e) =>
                 setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -224,11 +221,11 @@ export function ClienteFormPage({ id }: { id?: string }) {
         ))}
         <div className="flex gap-2">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               CEP
             </label>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-line px-3 py-2"
               value={form.cep}
               onChange={(e) => setForm((f) => ({ ...f, cep: e.target.value }))}
               onBlur={() => void buscarCep()}
@@ -236,12 +233,12 @@ export function ClienteFormPage({ id }: { id?: string }) {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-sm font-medium text-foreground mb-1">
             Endereço
           </label>
           <input
             required
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+            className="w-full rounded-lg border border-line px-3 py-2"
             value={form.logradouro}
             onChange={(e) =>
               setForm((f) => ({ ...f, logradouro: e.target.value }))
@@ -250,11 +247,11 @@ export function ClienteFormPage({ id }: { id?: string }) {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Número
             </label>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-line px-3 py-2"
               value={form.numero}
               onChange={(e) =>
                 setForm((f) => ({ ...f, numero: e.target.value }))
@@ -262,11 +259,11 @@ export function ClienteFormPage({ id }: { id?: string }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Complemento
             </label>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-line px-3 py-2"
               value={form.complemento}
               onChange={(e) =>
                 setForm((f) => ({ ...f, complemento: e.target.value }))
@@ -276,11 +273,11 @@ export function ClienteFormPage({ id }: { id?: string }) {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Bairro
             </label>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-line px-3 py-2"
               value={form.bairro}
               onChange={(e) =>
                 setForm((f) => ({ ...f, bairro: e.target.value }))
@@ -288,11 +285,11 @@ export function ClienteFormPage({ id }: { id?: string }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Cidade
             </label>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-line px-3 py-2"
               value={form.cidade}
               onChange={(e) =>
                 setForm((f) => ({ ...f, cidade: e.target.value }))
@@ -301,12 +298,12 @@ export function ClienteFormPage({ id }: { id?: string }) {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-sm font-medium text-foreground mb-1">
             UF
           </label>
           <input
             maxLength={2}
-            className="w-full max-w-[120px] rounded-lg border border-slate-300 px-3 py-2"
+            className="w-full max-w-[120px] rounded-lg border border-line px-3 py-2"
             value={form.uf}
             onChange={(e) =>
               setForm((f) => ({ ...f, uf: e.target.value.toUpperCase() }))
@@ -314,10 +311,7 @@ export function ClienteFormPage({ id }: { id?: string }) {
           />
         </div>
         {err && <p className="text-sm text-red-600">{err}</p>}
-        <button
-          type="submit"
-          className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium"
-        >
+        <button type="submit" className="btn-primary text-sm">
           Salvar
         </button>
       </form>
