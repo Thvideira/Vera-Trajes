@@ -1,4 +1,6 @@
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { showPopup } from "../contexts/PopupContext";
 import { clearUserRole, getUserRole } from "../lib/auth";
 import { MobileGuard } from "./MobileGuard";
 
@@ -34,11 +36,37 @@ function titleFromPath(pathname: string): string {
 }
 
 export function Layout() {
-  const { pathname } = useLocation();
+  const { pathname, state, search, hash } = useLocation();
+  const navigate = useNavigate();
   const pageTitle = titleFromPath(pathname);
   const role = getUserRole();
   const isMobile = role === "MOBILE";
   const nav = isMobile ? navMobile : navAdmin;
+
+  useEffect(() => {
+    const welcomeUserName =
+      state && typeof state === "object" && "welcomeUserName" in state
+        ? String((state as { welcomeUserName?: string }).welcomeUserName ?? "")
+            .trim()
+        : "";
+    if (!welcomeUserName) return;
+    const dedupeKey = `vera_welcome_shown:${welcomeUserName}`;
+    if (sessionStorage.getItem(dedupeKey)) {
+      navigate({ pathname, search, hash }, { replace: true, state: {} });
+      return;
+    }
+    sessionStorage.setItem(dedupeKey, "1");
+    showPopup({
+      type: "success",
+      title: "Bem-vindo",
+      message: `Bem-vindo ao sistema, ${welcomeUserName}!`,
+      confirmText: "OK",
+      autoCloseMs: 6000,
+      closeOnBackdrop: true,
+      closeOnEscape: true,
+    });
+    navigate({ pathname, search, hash }, { replace: true, state: {} });
+  }, [state, pathname, search, hash, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-vera-50">
@@ -78,6 +106,12 @@ export function Layout() {
             className="hover:text-white transition-colors"
             onClick={() => {
               localStorage.removeItem("token");
+              for (let i = sessionStorage.length - 1; i >= 0; i--) {
+                const k = sessionStorage.key(i);
+                if (k?.startsWith("vera_welcome_shown:")) {
+                  sessionStorage.removeItem(k);
+                }
+              }
               clearUserRole();
             }}
           >

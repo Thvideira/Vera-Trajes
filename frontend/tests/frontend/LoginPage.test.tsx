@@ -74,6 +74,9 @@ describe("LoginPage", () => {
       email: "admin@loja.vera",
       password: "admin123",
     });
-    expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith("/", {
+      replace: true,
+      state: { welcomeUserName: "Admin" },
+    });
   });
 });

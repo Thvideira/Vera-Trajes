@@ -30,10 +30,15 @@ export function LoginPage({ mobileEntry }: { mobileEntry?: boolean }) {
       });
       localStorage.setItem("token", res.token);
       setUserRole(res.user.role);
+      const welcomeUserName =
+        res.user.nome?.trim() || res.user.email;
       if (res.user.role === "MOBILE") {
-        nav("/trajes/novo", { replace: true });
+        nav("/trajes/novo", {
+          replace: true,
+          state: { welcomeUserName },
+        });
       } else {
-        nav("/", { replace: true });
+        nav("/", { replace: true, state: { welcomeUserName } });
       }
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "Falha no login");

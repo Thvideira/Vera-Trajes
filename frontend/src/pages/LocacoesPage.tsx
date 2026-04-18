@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { confirmAsync, showPopup } from "../contexts/PopupContext";
 import { apiGet, apiSend } from "../lib/api";
 import { subscribeTrajeCatalogLive } from "../lib/trajesCatalog";
 import {
@@ -303,6 +304,7 @@ export function LocacoesPage() {
 }
 
 export function LocacaoNovaPage() {
+  const navigate = useNavigate();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -417,7 +419,14 @@ export function LocacaoNovaPage() {
         })),
       };
       await apiSend("/api/locacoes", "POST", payload);
-      window.location.href = "/locacoes";
+      showPopup({
+        type: "success",
+        title: "Sucesso",
+        message: "Operação realizada com sucesso!",
+        confirmText: "OK",
+        autoCloseMs: 2800,
+        onDismiss: () => navigate("/locacoes", { replace: true }),
+      });
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "Erro");
     }
@@ -856,13 +865,18 @@ export function LocacaoDetailPage({ id }: { id: string }) {
   }
 
   async function removerTrajeLocadoClick(trajeLocadoId: string) {
-    if (
-      !confirm(
-        "Remover este traje desta retirada? O traje volta a ficar disponível."
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmAsync({
+      type: "warning",
+      title: "Remover traje",
+      message:
+        "Remover este traje desta retirada? O traje volta a ficar disponível.",
+      confirmText: "Remover",
+      cancelText: "Cancelar",
+      danger: true,
+      closeOnBackdrop: false,
+      closeOnEscape: false,
+    });
+    if (!ok) return;
     await apiSend(`/api/trajes-locados/${trajeLocadoId}`, "DELETE");
     await load();
   }

@@ -6,6 +6,7 @@ import {
   useParams,
 } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { PopupProvider } from "./contexts/PopupContext";
 import { AjustesPage } from "./pages/AjustesPage";
 import { ClienteFormPage, ClientesPage } from "./pages/ClientesPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -23,6 +24,7 @@ import { TrajeFormPage, TrajesPage } from "./pages/TrajesPage";
 export default function App() {
   return (
     <BrowserRouter>
+      <PopupProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/mobile" element={<LoginPage mobileEntry />} />
@@ -47,6 +49,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </PopupProvider>
     </BrowserRouter>
   );
 }

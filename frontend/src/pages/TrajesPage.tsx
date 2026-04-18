@@ -7,8 +7,8 @@ import {
   useState,
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { DeleteTrajeConfirmModal } from "../components/DeleteTrajeConfirmModal";
 import { ApiError, apiGet, apiSend, apiUploadFoto } from "../lib/api";
+import { confirmAsync, showPopup } from "../contexts/PopupContext";
 import { isAdminUser, isMobileUser } from "../lib/auth";
 import {
   notifyTrajesCatalogChanged,
@@ -30,8 +30,7 @@ export function TrajesPage() {
   const mobile = isMobileUser();
   const admin = isAdminUser();
   const [list, setList] = useState<Traje[]>([]);
-  const [deleteTarget, setDeleteTarget] = useState<Traje | null>(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [tipo, setTipo] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -59,13 +58,22 @@ export function TrajesPage() {
     });
   }, [load]);
 
-  async function confirmDeleteTraje(): Promise<void> {
-    if (!deleteTarget) return;
-    setDeleteBusy(true);
+  async function onDeleteTrajeClick(t: Traje): Promise<void> {
+    const ok = await confirmAsync({
+      type: "warning",
+      title: "Excluir traje",
+      message: "Tem certeza que deseja excluir este item?",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      danger: true,
+      closeOnBackdrop: false,
+      closeOnEscape: false,
+    });
+    if (!ok) return;
+    setDeleteBusyId(t.id);
     try {
-      await apiSend(`/api/trajes/${deleteTarget.id}`, "DELETE");
+      await apiSend(`/api/trajes/${t.id}`, "DELETE");
       notifyTrajesCatalogChanged();
-      setDeleteTarget(null);
       await load();
     } catch (e) {
       const msg =
@@ -74,9 +82,14 @@ export function TrajesPage() {
           : e instanceof Error
             ? e.message
             : "Não foi possível excluir";
-      window.alert(msg);
+      showPopup({
+        type: "error",
+        title: "Erro ao excluir",
+        message: msg,
+        confirmText: "OK",
+      });
     } finally {
-      setDeleteBusy(false);
+      setDeleteBusyId(null);
     }
   }
 
@@ -185,8 +198,9 @@ export function TrajesPage() {
                   <div className="p-2 border-t border-slate-100 flex justify-end bg-white">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-                      onClick={() => setDeleteTarget(t)}
+                      disabled={deleteBusyId !== null}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      onClick={() => void onDeleteTrajeClick(t)}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -212,17 +226,6 @@ export function TrajesPage() {
         )}
       </div>
 
-      <DeleteTrajeConfirmModal
-        open={deleteTarget !== null}
-        trajeLabel={
-          deleteTarget
-            ? `${deleteTarget.codigo} — ${deleteTarget.nome}`
-            : ""
-        }
-        busy={deleteBusy}
-        onCancel={() => !deleteBusy && setDeleteTarget(null)}
-        onConfirm={() => void confirmDeleteTraje()}
-      />
     </div>
   );
 }
@@ -235,8 +238,6 @@ export function TrajeFormPage({ id }: { id?: string }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [fotoInputsKey, setFotoInputsKey] = useState(0);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [form, setForm] = useState({
     nome: "",
@@ -272,7 +273,6 @@ export function TrajeFormPage({ id }: { id?: string }) {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setErr(null);
-    setSuccessMsg(null);
     try {
       let trajeId = id;
       if (isNew) {
@@ -281,6 +281,7 @@ export function TrajeFormPage({ id }: { id?: string }) {
       } else {
         await apiSend(`/api/trajes/${id}`, "PUT", form);
       }
+      const hadFoto = Boolean(fotoFile && trajeId);
       if (fotoFile && trajeId) {
         await apiUploadFoto(trajeId, fotoFile);
       }
@@ -295,7 +296,24 @@ export function TrajeFormPage({ id }: { id?: string }) {
         setPreview(null);
         setFotoFile(null);
         setFotoInputsKey((k) => k + 1);
-        setSuccessMsg("Traje cadastrado com sucesso! Você pode cadastrar outro.");
+        showPopup({
+          type: "success",
+          title: "Sucesso",
+          message: "Operação realizada com sucesso!",
+          confirmText: "OK",
+          autoCloseMs: 2800,
+        });
+        return;
+      }
+      if (hadFoto) {
+        showPopup({
+          type: "success",
+          title: "Sucesso",
+          message: "Operação realizada com sucesso!",
+          confirmText: "OK",
+          autoCloseMs: 2600,
+          onDismiss: () => navigate("/trajes"),
+        });
         return;
       }
       navigate("/trajes");
@@ -316,7 +334,6 @@ export function TrajeFormPage({ id }: { id?: string }) {
     try {
       await apiSend(`/api/trajes/${id}`, "DELETE");
       notifyTrajesCatalogChanged();
-      setDeleteModalOpen(false);
       navigate("/trajes");
     } catch (e) {
       const msg =
@@ -325,7 +342,12 @@ export function TrajeFormPage({ id }: { id?: string }) {
           : e instanceof Error
             ? e.message
             : "Não foi possível excluir";
-      window.alert(msg);
+      showPopup({
+        type: "error",
+        title: "Erro ao excluir",
+        message: msg,
+        confirmText: "OK",
+      });
     } finally {
       setDeleteBusy(false);
     }
@@ -338,18 +360,6 @@ export function TrajeFormPage({ id }: { id?: string }) {
       <h1 className="text-2xl font-semibold">
         {isNew ? "Novo traje" : "Editar traje"}
       </h1>
-      {successMsg && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <span>{successMsg}</span>
-          <button
-            type="button"
-            className="text-emerald-800 underline shrink-0"
-            onClick={() => setSuccessMsg(null)}
-          >
-            Fechar
-          </button>
-        </div>
-      )}
       <form onSubmit={onSubmit} className="space-y-4 bg-white p-6 rounded-xl border">
         <div>
           <label className="block text-sm font-medium mb-1">Nome</label>
@@ -476,8 +486,24 @@ export function TrajeFormPage({ id }: { id?: string }) {
           </p>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-            onClick={() => setDeleteModalOpen(true)}
+            disabled={deleteBusy}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            onClick={() =>
+              void (async () => {
+                const ok = await confirmAsync({
+                  type: "warning",
+                  title: "Excluir traje",
+                  message: "Tem certeza que deseja excluir este item?",
+                  confirmText: "Excluir",
+                  cancelText: "Cancelar",
+                  danger: true,
+                  closeOnBackdrop: false,
+                  closeOnEscape: false,
+                });
+                if (!ok) return;
+                await confirmDeleteFromEdit();
+              })()
+            }
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -498,13 +524,6 @@ export function TrajeFormPage({ id }: { id?: string }) {
         </div>
       ) : null}
 
-      <DeleteTrajeConfirmModal
-        open={deleteModalOpen}
-        trajeLabel={`${form.codigo} — ${form.nome}`}
-        busy={deleteBusy}
-        onCancel={() => !deleteBusy && setDeleteModalOpen(false)}
-        onConfirm={() => void confirmDeleteFromEdit()}
-      />
     </div>
   );
 }
