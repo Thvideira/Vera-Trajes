@@ -1,6 +1,9 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiGet, apiSend } from "../lib/api";
+import { formatarCPF, limparCPF } from "../lib/cpf";
+import { formatarNome } from "../lib/formatarNome";
+import { formatarTelefone, normalizarTelefoneDigitos } from "../lib/telefone";
 
 export type Cliente = {
   id: string;
@@ -94,8 +97,10 @@ export function ClientesPage() {
                   className="border-b border-line transition-colors hover:bg-pink-soft"
                 >
                   <td className="p-3 font-medium">{c.nome}</td>
-                  <td className="p-3">{c.telefone}</td>
-                  <td className="p-3">{c.cpf}</td>
+                  <td className="p-3 tabular-nums whitespace-nowrap">
+                    {formatarTelefone(c.telefone)}
+                  </td>
+                  <td className="p-3 tabular-nums">{formatarCPF(c.cpf)}</td>
                   <td className="p-3">{c.cidade ?? "—"}</td>
                   <td className="p-3">
                     <Link
@@ -138,8 +143,8 @@ export function ClienteFormPage({ id }: { id?: string }) {
       .then((c) => {
         setForm({
           nome: c.nome,
-          telefone: c.telefone,
-          cpf: c.cpf,
+          telefone: normalizarTelefoneDigitos(c.telefone),
+          cpf: limparCPF(c.cpf),
           cep: c.cep,
           logradouro: c.logradouro,
           numero: c.numero ?? "",
@@ -181,10 +186,16 @@ export function ClienteFormPage({ id }: { id?: string }) {
     e.preventDefault();
     setErr(null);
     try {
+      const payload = {
+        ...form,
+        nome: formatarNome(form.nome),
+        telefone: normalizarTelefoneDigitos(form.telefone),
+        cpf: limparCPF(form.cpf),
+      };
       if (isNew) {
-        await apiSend("/api/clientes", "POST", form);
+        await apiSend("/api/clientes", "POST", payload);
       } else {
-        await apiSend(`/api/clientes/${id}`, "PUT", form);
+        await apiSend(`/api/clientes/${id}`, "PUT", payload);
       }
       window.location.href = "/clientes";
     } catch (ex: unknown) {
@@ -200,21 +211,49 @@ export function ClienteFormPage({ id }: { id?: string }) {
         {isNew ? "Novo cliente" : "Editar cliente"}
       </h1>
       <form onSubmit={onSubmit} className="space-y-4 bg-surface p-6 rounded-xl border border-line">
-        {[
-          ["nome", "Nome completo"],
-          ["telefone", "Telefone (WhatsApp)"],
-          ["cpf", "CPF"],
-        ].map(([k, label]) => (
+        {(
+          [
+            ["nome", "Nome completo"],
+            ["telefone", "Telefone (WhatsApp)"],
+            ["cpf", "CPF"],
+          ] as const
+        ).map(([k, label]) => (
           <div key={k}>
             <label className="block text-sm font-medium text-foreground mb-1">
               {label}
             </label>
             <input
-              required={k !== "complemento"}
+              required
               className="w-full rounded-lg border border-line px-3 py-2"
-              value={form[k as keyof typeof form] as string}
+              placeholder={
+                k === "cpf"
+                  ? "000.000.000-00"
+                  : k === "telefone"
+                    ? "(00) 00000-0000"
+                    : undefined
+              }
+              inputMode={
+                k === "cpf" || k === "telefone" ? "numeric" : undefined
+              }
+              value={
+                k === "cpf"
+                  ? formatarCPF(form.cpf)
+                  : k === "telefone"
+                    ? formatarTelefone(form.telefone)
+                    : (form[k] as string)
+              }
               onChange={(e) =>
-                setForm((f) => ({ ...f, [k]: e.target.value }))
+                k === "cpf"
+                  ? setForm((f) => ({
+                      ...f,
+                      cpf: limparCPF(e.target.value).slice(0, 11),
+                    }))
+                  : k === "telefone"
+                    ? setForm((f) => ({
+                        ...f,
+                        telefone: normalizarTelefoneDigitos(e.target.value),
+                      }))
+                    : setForm((f) => ({ ...f, [k]: e.target.value }))
               }
             />
           </div>

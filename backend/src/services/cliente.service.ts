@@ -1,6 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { limparCPF } from "../utils/cpf.js";
+import { formatarNome } from "../utils/formatarNome.js";
+import { normalizarTelefoneParaBanco } from "../utils/telefone.js";
 
 export async function listClientes(filters: { q?: string }) {
   const q = filters.q?.trim();
@@ -24,24 +27,36 @@ export async function getCliente(id: string) {
 }
 
 export async function createCliente(data: Prisma.ClienteCreateInput) {
-  const cpf = data.cpf.replace(/\D/g, "");
+  const cpf = limparCPF(data.cpf);
   const exists = await prisma.cliente.findUnique({ where: { cpf } });
   if (exists) throw new AppError(409, "CPF já cadastrado");
   return prisma.cliente.create({
-    data: { ...data, cpf },
+    data: {
+      ...data,
+      cpf,
+      nome: formatarNome(String(data.nome)),
+      telefone: normalizarTelefoneParaBanco(String(data.telefone)),
+    },
   });
 }
 
 export async function updateCliente(id: string, data: Prisma.ClienteUpdateInput) {
   await getCliente(id);
-  if (data.cpf && typeof data.cpf === "string") {
-    data.cpf = data.cpf.replace(/\D/g, "");
+  const payload: Prisma.ClienteUpdateInput = { ...data };
+  if (typeof payload.nome === "string") {
+    payload.nome = formatarNome(payload.nome);
+  }
+  if (typeof payload.telefone === "string") {
+    payload.telefone = normalizarTelefoneParaBanco(payload.telefone);
+  }
+  if (payload.cpf && typeof payload.cpf === "string") {
+    payload.cpf = limparCPF(payload.cpf);
     const clash = await prisma.cliente.findFirst({
-      where: { cpf: data.cpf as string, NOT: { id } },
+      where: { cpf: payload.cpf as string, NOT: { id } },
     });
     if (clash) throw new AppError(409, "CPF já cadastrado");
   }
-  return prisma.cliente.update({ where: { id }, data });
+  return prisma.cliente.update({ where: { id }, data: payload });
 }
 
 export async function deleteCliente(id: string) {

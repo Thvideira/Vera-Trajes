@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiGet } from "../lib/api";
+import { formatarTelefone } from "../lib/telefone";
 import {
   LABEL_RETIRADA_STATUS,
   badgeClassPrecisaAjuste,
@@ -163,7 +164,7 @@ export function FinanceiroLocacaoDetalhePage() {
         </p>
         <p className="text-sm">
           <span className="text-muted">Telefone: </span>
-          {cliente.telefone}
+          <span className="tabular-nums">{formatarTelefone(cliente.telefone)}</span>
         </p>
       </section>
 

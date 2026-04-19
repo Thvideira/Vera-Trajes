@@ -6,16 +6,34 @@ import {
   TrajeTipo,
 } from "@prisma/client";
 import { z } from "zod";
+import { normalizarTelefoneParaBanco } from "../utils/telefone.js";
 
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(4),
 });
 
+/** CPF: aceita com ou sem máscara; resultado do parse são 11 dígitos. */
+const cpf11 = z
+  .string()
+  .transform((s) => s.replace(/\D/g, ""))
+  .pipe(z.string().length(11, "CPF deve ter 11 dígitos"));
+
+/** Telefone BR: só dígitos, DDD + número (10 ou 11); aceita entrada com 55. */
+const telefoneBr = z
+  .string()
+  .transform((s) => normalizarTelefoneParaBanco(s))
+  .pipe(
+    z.string().refine(
+      (d) => d.length === 10 || d.length === 11,
+      "Telefone deve ter 10 ou 11 dígitos (DDD + número)"
+    )
+  );
+
 export const clienteCreateSchema = z.object({
   nome: z.string().min(2),
-  telefone: z.string().min(8),
-  cpf: z.string().min(11),
+  telefone: telefoneBr,
+  cpf: cpf11,
   cep: z.string().min(8),
   logradouro: z.string().min(1),
   numero: z.string().optional(),
