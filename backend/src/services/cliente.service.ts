@@ -4,18 +4,24 @@ import { AppError } from "../middleware/errorHandler.js";
 import { limparCPF } from "../utils/cpf.js";
 import { formatarNome } from "../utils/formatarNome.js";
 import { normalizarTelefoneParaBanco } from "../utils/telefone.js";
+import { normalizarTermoBuscaClientes } from "../utils/clienteBusca.js";
 
 export async function listClientes(filters: { q?: string }) {
-  const q = filters.q?.trim();
+  const termo = normalizarTermoBuscaClientes(filters.q);
+  if (!termo) {
+    return prisma.cliente.findMany({ orderBy: { nome: "asc" } });
+  }
+
+  const buscaNumerica = termo.replace(/\D/g, "");
+  if (buscaNumerica.length > 0) {
+    return prisma.cliente.findMany({
+      where: { cpf: { contains: buscaNumerica } },
+      orderBy: { nome: "asc" },
+    });
+  }
+
   return prisma.cliente.findMany({
-    where: q
-      ? {
-          OR: [
-            { nome: { contains: q, mode: "insensitive" } },
-            { cpf: { contains: q.replace(/\D/g, "") } },
-          ],
-        }
-      : undefined,
+    where: { nome: { contains: termo, mode: "insensitive" } },
     orderBy: { nome: "asc" },
   });
 }

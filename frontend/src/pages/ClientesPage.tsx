@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { Link } from "react-router-dom";
 import { apiGet, apiSend } from "../lib/api";
 import { formatarCPF, limparCPF } from "../lib/cpf";
@@ -21,14 +22,16 @@ export type Cliente = {
 
 export function ClientesPage() {
   const [list, setList] = useState<Cliente[]>([]);
-  const [q, setQ] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebouncedValue(searchInput, 300);
+  const q = debouncedSearch.trim();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  async function load() {
+  async function load(query: string) {
     setLoading(true);
     try {
-      const params = q ? `?q=${encodeURIComponent(q)}` : "";
+      const params = query ? `?q=${encodeURIComponent(query)}` : "";
       const rows = await apiGet<Cliente[]>(`/api/clientes${params}`);
       setList(rows);
       setErr(null);
@@ -40,8 +43,8 @@ export function ClientesPage() {
   }
 
   useEffect(() => {
-    void load();
-  }, []);
+    void load(q);
+  }, [q]);
 
   return (
     <div className="space-y-6">
@@ -54,23 +57,25 @@ export function ClientesPage() {
           Novo cliente
         </Link>
       </div>
-      <form
-        className="flex gap-2 flex-wrap"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void load();
-        }}
-      >
+      <div className="flex gap-2 flex-wrap items-center">
         <input
+          type="search"
           className="rounded-lg border border-line px-3 py-2 text-sm flex-1 min-w-[200px]"
-          placeholder="Buscar…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
+          placeholder="Nome ou CPF (busca após 300ms)"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          aria-label="Buscar clientes por nome ou CPF"
         />
-        <button type="submit" className="btn-secondary text-sm py-2 px-4">
-          Filtrar
-        </button>
-      </form>
+        {searchInput.trim() !== "" && (
+          <button
+            type="button"
+            className="btn-secondary text-sm py-2 px-4"
+            onClick={() => setSearchInput("")}
+          >
+            Limpar
+          </button>
+        )}
+      </div>
       {err && <p className="text-red-600 text-sm">{err}</p>}
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="min-w-full text-sm">
