@@ -10,13 +10,55 @@ describe("normalizarItensDescritivos", () => {
         { descricao: "Cinto", variacao: "", observacao: "  " },
       ])
     ).toEqual([
-      { descricao: "Gravata", variacao: "azul", observacao: null },
-      { descricao: "Cinto", variacao: null, observacao: null },
+      {
+        descricao: "Gravata",
+        quantidade: 1,
+        variacao: "azul",
+        observacao: null,
+        separado: false,
+      },
+      {
+        descricao: "Cinto",
+        quantidade: 1,
+        variacao: null,
+        observacao: null,
+        separado: false,
+      },
     ]);
   });
 
   it("retorna vazio para undefined ou array vazio", () => {
     expect(normalizarItensDescritivos(undefined)).toEqual([]);
     expect(normalizarItensDescritivos([])).toEqual([]);
+  });
+
+  it("normaliza quantidade e separado", () => {
+    expect(
+      normalizarItensDescritivos([
+        {
+          descricao: "Gravata",
+          quantidade: 2,
+          variacao: null,
+          observacao: null,
+          separado: true,
+        },
+        { descricao: "X", quantidade: 0, separado: false },
+      ])
+    ).toEqual([
+      {
+        descricao: "Gravata",
+        quantidade: 2,
+        variacao: null,
+        observacao: null,
+        separado: true,
+      },
+      {
+        descricao: "X",
+        quantidade: 1,
+        variacao: null,
+        observacao: null,
+        separado: false,
+      },
+    ]);
   });
 });

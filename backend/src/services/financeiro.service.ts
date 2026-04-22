@@ -59,8 +59,10 @@ export async function getFinanceiroLocacaoDetalhe(locacaoId: string) {
     itensDescritivos: loc.itensDescritivos.map((i) => ({
       id: i.id,
       descricao: i.descricao,
+      quantidade: i.quantidade,
       variacao: i.variacao,
       observacao: i.observacao,
+      separado: i.separado,
     })),
   };
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { formatarResumoAcessoriosLocacao } from "../lib/acessoriosLocacao";
 import { apiGet } from "../lib/api";
 import { formatarTelefone } from "../lib/telefone";
 import {
@@ -43,8 +44,10 @@ type Detalhe = {
   itensDescritivos: {
     id: string;
     descricao: string;
+    quantidade: number;
     variacao: string | null;
     observacao: string | null;
+    separado: boolean;
   }[];
 };
 
@@ -182,17 +185,39 @@ export function FinanceiroLocacaoDetalhePage() {
         {itensDescritivos.length === 0 ? (
           <p className="text-sm text-muted">Nenhum item deste tipo nesta locação.</p>
         ) : (
-          <ul className="divide-y divide-line border border-line rounded-lg overflow-hidden text-sm">
-            {itensDescritivos.map((i) => (
-              <li key={i.id} className="p-3 bg-hover-gray/40">
-                <span className="font-medium">{i.descricao}</span>
-                {i.variacao ? <span className="text-muted"> · {i.variacao}</span> : null}
-                {i.observacao ? (
-                  <p className="text-xs text-muted mt-1">{i.observacao}</p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <>
+            {formatarResumoAcessoriosLocacao(itensDescritivos) && (
+              <p className="text-sm font-medium text-foreground">
+                {formatarResumoAcessoriosLocacao(itensDescritivos)}
+              </p>
+            )}
+            <ul className="divide-y divide-line border border-line rounded-lg overflow-hidden text-sm">
+              {itensDescritivos.map((i) => (
+                <li
+                  key={i.id}
+                  className="p-3 bg-hover-gray/40 flex flex-wrap gap-2 justify-between items-start"
+                >
+                  <div>
+                    <span className="font-medium">
+                      {(i.quantidade ?? 1) > 1 ? `${i.quantidade}× ` : ""}
+                      {i.descricao}
+                    </span>
+                    {i.variacao ? <span className="text-muted"> · {i.variacao}</span> : null}
+                    {i.observacao ? (
+                      <p className="text-xs text-muted mt-1">{i.observacao}</p>
+                    ) : null}
+                  </div>
+                  {i.separado ? (
+                    <span className="text-xs shrink-0 px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-200">
+                      Separado p/ entrega
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted shrink-0">Não separado</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
 

@@ -62,8 +62,14 @@ const ajusteLinha = z.object({
 /** Acessórios / itens sem código na locação (lista na própria locação). */
 export const locacaoItemDescritivoLinha = z.object({
   descricao: z.string().min(1).max(200),
+  quantidade: z.coerce.number().int().min(1).max(999).optional().default(1),
   variacao: z.string().max(200).optional().nullable(),
   observacao: z.string().max(500).optional().nullable(),
+  separado: z.boolean().optional().default(false),
+});
+
+export const locacaoItemDescritivoSeparadoSchema = z.object({
+  separado: z.boolean(),
 });
 
 /** Entrada flexível: retiradas vazias/incompletas são descartadas no service */

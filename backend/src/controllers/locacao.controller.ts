@@ -3,6 +3,7 @@ import { requireParam } from "../utils/param.js";
 import {
   listLocacaoQuerySchema,
   locacaoCreateSchema,
+  locacaoItemDescritivoSeparadoSchema,
   locacaoPatchSchema,
   pagamentoSchema,
   relatorioQuerySchema,
@@ -37,6 +38,16 @@ export async function getHistorico(req: Request, res: Response) {
 export async function patchLocacao(req: Request, res: Response) {
   const data = locacaoPatchSchema.parse(req.body);
   const row = await service.patchLocacao(requireParam(req.params.id), data);
+  res.json(row);
+}
+
+export async function patchLocacaoItemDescritivoSeparado(req: Request, res: Response) {
+  const body = locacaoItemDescritivoSeparadoSchema.parse(req.body);
+  const row = await service.patchLocacaoItemDescritivoSeparado(
+    requireParam(req.params.id),
+    requireParam(req.params.itemId),
+    body.separado
+  );
   res.json(row);
 }
 

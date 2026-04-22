@@ -167,8 +167,11 @@ model LocacaoItemDescritivo {
   locacaoId   String   @map("locacao_id")
   locacao     Locacao  @relation(fields: [locacaoId], references: [id], onDelete: Cascade)
   descricao   String   /// Ex.: Gravata, Cinto, Suspensório (tipo livre para novos acessórios)
+  quantidade  Int      @default(1)
   variacao    String?  @map("variacao") /// Cor, modelo, tamanho (ex.: "preto", "infantil")
   observacao  String?
+  /// Já separado para entrega ao cliente
+  separado    Boolean  @default(false) @map("separado_entrega")
   ordem       Int      @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
 

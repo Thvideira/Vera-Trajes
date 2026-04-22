@@ -11,6 +11,10 @@ locacaoRouter.post(
 );
 locacaoRouter.post("/", asyncHandler(ctrl.postCreate));
 locacaoRouter.get("/", asyncHandler(ctrl.getList));
+locacaoRouter.patch(
+  "/:id/itens-descritivos/:itemId",
+  asyncHandler(ctrl.patchLocacaoItemDescritivoSeparado)
+);
 locacaoRouter.patch("/:id", asyncHandler(ctrl.patchLocacao));
 locacaoRouter.get("/:id/historico", asyncHandler(ctrl.getHistorico));
 locacaoRouter.post("/:id/retiradas", asyncHandler(ctrl.postRetirada));

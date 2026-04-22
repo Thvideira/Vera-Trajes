@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { showPopup } from "../contexts/PopupContext";
+import { formatarResumoAcessoriosLocacao } from "../lib/acessoriosLocacao";
 import { apiGet, apiSend } from "../lib/api";
 import { subscribeTrajeCatalogLive } from "../lib/trajesCatalog";
 import {
@@ -32,15 +33,32 @@ type Retirada = {
 };
 
 /** Peças sem código na locação (gravata, cinto, etc.). */
-type LocacaoItemDescritivo = {
+export type LocacaoItemDescritivo = {
   id: string;
   descricao: string;
+  quantidade: number;
   variacao: string | null;
   observacao: string | null;
+  separado: boolean;
 };
 
-function linhaItemDescritivoVazia() {
-  return { descricao: "", variacao: "", observacao: "" };
+export type LinhaItemDescritivoForm = {
+  id?: string;
+  descricao: string;
+  quantidade: number;
+  variacao: string;
+  observacao: string;
+  separado: boolean;
+};
+
+function linhaItemDescritivoVazia(): LinhaItemDescritivoForm {
+  return {
+    descricao: "",
+    quantidade: 1,
+    variacao: "",
+    observacao: "",
+    separado: false,
+  };
 }
 
 type LocacaoRow = {
@@ -52,6 +70,7 @@ type LocacaoRow = {
   valorPago: string;
   cliente: { nome: string };
   retiradas: Retirada[];
+  itensDescritivos?: LocacaoItemDescritivo[];
 };
 
 function FotoPreviewModal({
@@ -179,9 +198,33 @@ export function toDatetimeLocalValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+const FILTRO_LOCACOES_SITUACAO_KEY = "lojavera.locacoes.filtroSituacao";
+
+/** Primeira visita: "Em aberto"; depois: última escolha salva ("" | abertas | encerradas). */
+function readStoredFiltroSituacaoLocacoes(): string {
+  try {
+    const raw = localStorage.getItem(FILTRO_LOCACOES_SITUACAO_KEY);
+    if (raw === null) return "abertas";
+    if (raw === "" || raw === "abertas" || raw === "encerradas") return raw;
+  } catch {
+    /* private mode / indisponível */
+  }
+  return "abertas";
+}
+
+function persistFiltroSituacaoLocacoes(value: string) {
+  try {
+    localStorage.setItem(FILTRO_LOCACOES_SITUACAO_KEY, value);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function LocacoesPage() {
   const [list, setList] = useState<LocacaoRow[]>([]);
-  const [filtroEncerrada, setFiltroEncerrada] = useState<string>("");
+  const [filtroEncerrada, setFiltroEncerrada] = useState(() =>
+    readStoredFiltroSituacaoLocacoes()
+  );
   /** YYYY-MM-DD — filtra pela data do evento cadastrada na locação */
   const [filtroDataEvento, setFiltroDataEvento] = useState("");
   const [loading, setLoading] = useState(true);
@@ -219,7 +262,11 @@ export function LocacoesPage() {
           <select
             className="input-field w-auto max-w-[200px] py-2 text-sm"
             value={filtroEncerrada}
-            onChange={(e) => setFiltroEncerrada(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setFiltroEncerrada(v);
+              persistFiltroSituacaoLocacoes(v);
+            }}
           >
             <option value="">Todas</option>
             <option value="abertas">Em aberto</option>
@@ -309,6 +356,11 @@ export function LocacoesPage() {
                               onOpenPreview={setFotoModal}
                             />
                           ))
+                        )}
+                        {formatarResumoAcessoriosLocacao(l.itensDescritivos ?? []) && (
+                          <p className="text-xs text-muted mt-2 pt-2 border-t border-line/80">
+                            {formatarResumoAcessoriosLocacao(l.itensDescritivos ?? [])}
+                          </p>
                         )}
                       </div>
                     </td>
@@ -506,8 +558,13 @@ export function LocacaoNovaPage() {
           .filter((r) => r.descricao.trim())
           .map((r) => ({
             descricao: r.descricao.trim(),
+            quantidade: Math.min(
+              999,
+              Math.max(1, Math.floor(Number(r.quantidade)) || 1)
+            ),
             variacao: r.variacao.trim() || undefined,
             observacao: r.observacao.trim() || undefined,
+            separado: r.separado,
           })),
       };
       await apiSend("/api/locacoes", "POST", payload);
@@ -643,9 +700,9 @@ export function LocacaoNovaPage() {
             {itensDescritivos.map((row, idx) => (
               <div
                 key={idx}
-                className="grid gap-2 sm:grid-cols-3 border rounded-lg p-3 bg-surface"
+                className="grid gap-2 sm:grid-cols-12 border rounded-lg p-3 bg-surface items-end"
               >
-                <div className="sm:col-span-1">
+                <div className="sm:col-span-4">
                   <label className="block text-xs font-medium text-muted mb-1">
                     O que é (tipo)
                   </label>
@@ -661,7 +718,25 @@ export function LocacaoNovaPage() {
                     }}
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-muted mb-1">
+                    Qtd.
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={999}
+                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                    value={row.quantidade}
+                    onChange={(e) => {
+                      const n = Math.min(999, Math.max(1, Math.floor(Number(e.target.value)) || 1));
+                      setItensDescritivos((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, quantidade: n } : r))
+                      );
+                    }}
+                  />
+                </div>
+                <div className="sm:col-span-3">
                   <label className="block text-xs font-medium text-muted mb-1">
                     Cor / modelo / variante
                   </label>
@@ -677,7 +752,7 @@ export function LocacaoNovaPage() {
                     }}
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-3">
                   <label className="block text-xs font-medium text-muted mb-1">
                     Observação (opcional)
                   </label>
@@ -985,7 +1060,9 @@ export function LocacaoDetailPage({ id }: { id: string }) {
   const [novoTrajeRetirada, setNovoTrajeRetirada] = useState<Record<string, string>>(
     {}
   );
-  const [itensDescForm, setItensDescForm] = useState([linhaItemDescritivoVazia()]);
+  const [itensDescForm, setItensDescForm] = useState<LinhaItemDescritivoForm[]>([
+    linhaItemDescritivoVazia(),
+  ]);
   const [itensDescErr, setItensDescErr] = useState<string | null>(null);
 
   async function load() {
@@ -1009,9 +1086,12 @@ export function LocacaoDetailPage({ id }: { id: string }) {
     setItensDescForm(
       idsc.length > 0
         ? idsc.map((i) => ({
+            id: i.id,
             descricao: i.descricao,
+            quantidade: i.quantidade ?? 1,
             variacao: i.variacao ?? "",
             observacao: i.observacao ?? "",
+            separado: i.separado ?? false,
           }))
         : [linhaItemDescritivoVazia()]
     );
@@ -1022,18 +1102,44 @@ export function LocacaoDetailPage({ id }: { id: string }) {
     e.preventDefault();
     setItensDescErr(null);
     try {
-      await apiSend(`/api/locacoes/${id}`, "PATCH", {
+      const updated = await apiSend<LocacaoDetalhe>(`/api/locacoes/${id}`, "PATCH", {
         itensDescritivos: itensDescForm
           .filter((r) => r.descricao.trim())
           .map((r) => ({
             descricao: r.descricao.trim(),
+            quantidade: Math.min(
+              999,
+              Math.max(1, Math.floor(Number(r.quantidade)) || 1)
+            ),
             variacao: r.variacao.trim() ? r.variacao.trim() : null,
             observacao: r.observacao.trim() ? r.observacao.trim() : null,
+            separado: r.separado,
           })),
       });
-      await load();
+      setLoc(updated);
+      showPopup({
+        type: "success",
+        title: "Acessórios salvos",
+        message: "Acessórios salvos com sucesso.",
+        confirmText: "OK",
+        autoCloseMs: 2400,
+      });
     } catch (ex: unknown) {
       setItensDescErr(ex instanceof Error ? ex.message : "Erro ao salvar");
+    }
+  }
+
+  async function setSeparadoEntregaItem(itemId: string, separado: boolean) {
+    setItensDescErr(null);
+    try {
+      const updated = await apiSend<LocacaoDetalhe>(
+        `/api/locacoes/${id}/itens-descritivos/${itemId}`,
+        "PATCH",
+        { separado }
+      );
+      setLoc(updated);
+    } catch (ex: unknown) {
+      setItensDescErr(ex instanceof Error ? ex.message : "Erro ao atualizar");
     }
   }
 
@@ -1115,6 +1221,11 @@ export function LocacaoDetailPage({ id }: { id: string }) {
           {new Date(loc.dataAluguel).toLocaleString("pt-BR")}{" "}
           · {loc.encerrada ? "Encerrada" : "Em aberto"}
         </p>
+        {formatarResumoAcessoriosLocacao(loc.itensDescritivos ?? []) && (
+          <p className="text-sm text-foreground mt-2 font-medium max-w-2xl">
+            {formatarResumoAcessoriosLocacao(loc.itensDescritivos ?? [])}
+          </p>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4 text-sm">
@@ -1193,14 +1304,26 @@ export function LocacaoDetailPage({ id }: { id: string }) {
           ) : (
             <ul className="divide-y divide-line border border-line rounded-lg overflow-hidden">
               {(loc.itensDescritivos ?? []).map((i) => (
-                <li key={i.id} className="p-3 text-sm bg-hover-gray/40">
-                  <span className="font-medium">{i.descricao}</span>
-                  {i.variacao ? (
-                    <span className="text-muted"> · {i.variacao}</span>
-                  ) : null}
-                  {i.observacao ? (
-                    <p className="text-xs text-muted mt-1">{i.observacao}</p>
-                  ) : null}
+                <li key={i.id} className="p-3 text-sm bg-hover-gray/40 flex flex-wrap gap-2 justify-between items-start">
+                  <div>
+                    <span className="font-medium">
+                      {(i.quantidade ?? 1) > 1 ? `${i.quantidade}× ` : ""}
+                      {i.descricao}
+                    </span>
+                    {i.variacao ? (
+                      <span className="text-muted"> · {i.variacao}</span>
+                    ) : null}
+                    {i.observacao ? (
+                      <p className="text-xs text-muted mt-1">{i.observacao}</p>
+                    ) : null}
+                  </div>
+                  {i.separado ? (
+                    <span className="text-xs shrink-0 px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-200">
+                      Separado p/ entrega
+                    </span>
+                  ) : (
+                    <span className="text-xs shrink-0 text-muted">Não separado</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -1209,10 +1332,10 @@ export function LocacaoDetailPage({ id }: { id: string }) {
           <form onSubmit={salvarItensDescritivos} className="space-y-3">
             {itensDescForm.map((row, idx) => (
               <div
-                key={idx}
-                className="grid gap-2 sm:grid-cols-3 border rounded-lg p-3 bg-hover-gray/50"
+                key={row.id ?? `new-${idx}`}
+                className="grid gap-2 sm:grid-cols-12 border rounded-lg p-3 bg-hover-gray/50 items-end"
               >
-                <div>
+                <div className="sm:col-span-3">
                   <label className="block text-xs font-medium text-muted mb-1">
                     Tipo / nome
                   </label>
@@ -1228,7 +1351,26 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                     }}
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-muted mb-1">Qtd.</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={999}
+                    className="input-field text-sm"
+                    value={row.quantidade}
+                    onChange={(e) => {
+                      const n = Math.min(
+                        999,
+                        Math.max(1, Math.floor(Number(e.target.value)) || 1)
+                      );
+                      setItensDescForm((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, quantidade: n } : r))
+                      );
+                    }}
+                  />
+                </div>
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-muted mb-1">
                     Cor / variante
                   </label>
@@ -1244,29 +1386,54 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                     }}
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-3">
                   <label className="block text-xs font-medium text-muted mb-1">Observação</label>
-                  <div className="flex gap-2 items-end">
+                  <input
+                    className="input-field text-sm w-full"
+                    value={row.observacao}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setItensDescForm((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, observacao: v } : r))
+                      );
+                    }}
+                  />
+                </div>
+                <div className="sm:col-span-2 flex flex-col gap-2">
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
                     <input
-                      className="input-field text-sm flex-1 min-w-0"
-                      value={row.observacao}
+                      type="checkbox"
+                      className="rounded border-line"
+                      checked={row.separado}
+                      title={
+                        row.id
+                          ? "Atualiza na hora no servidor"
+                          : "Será gravado ao clicar em Salvar lista de acessórios"
+                      }
                       onChange={(e) => {
-                        const v = e.target.value;
-                        setItensDescForm((rows) =>
-                          rows.map((r, i) => (i === idx ? { ...r, observacao: v } : r))
-                        );
+                        const checked = e.target.checked;
+                        if (row.id) {
+                          void setSeparadoEntregaItem(row.id, checked);
+                        } else {
+                          setItensDescForm((rows) =>
+                            rows.map((r, i) => (i === idx ? { ...r, separado: checked } : r))
+                          );
+                        }
                       }}
                     />
-                    {itensDescForm.length > 1 && (
-                      <button
-                        type="button"
-                        className="text-xs text-red-700 shrink-0 px-2 py-1 border border-red-200 rounded-lg"
-                        onClick={() => removeLinhaItemDescForm(idx)}
-                      >
-                        Remover
-                      </button>
-                    )}
-                  </div>
+                    <span className={row.separado ? "text-green-700 font-medium" : "text-muted"}>
+                      Separado p/ entrega
+                    </span>
+                  </label>
+                  {itensDescForm.length > 1 && (
+                    <button
+                      type="button"
+                      className="text-xs text-red-700 px-2 py-1 border border-red-200 rounded-lg self-start"
+                      onClick={() => removeLinhaItemDescForm(idx)}
+                    >
+                      Remover linha
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

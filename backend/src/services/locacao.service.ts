@@ -54,20 +54,30 @@ export interface CreateLocacaoInput {
   /** Itens sem código (acessórios), só texto na locação. */
   itensDescritivos?: {
     descricao: string;
+    quantidade?: number | null;
     variacao?: string | null;
     observacao?: string | null;
+    separado?: boolean | null;
   }[];
 }
 
 export type ItemDescritivoNormalizado = {
   descricao: string;
+  quantidade: number;
   variacao: string | null;
   observacao: string | null;
+  separado: boolean;
 };
 
 /** Linhas com descrição vazia após trim são descartadas. */
 export function normalizarItensDescritivos(
-  raw?: { descricao: string; variacao?: string | null; observacao?: string | null }[]
+  raw?: {
+    descricao: string;
+    quantidade?: number | null;
+    variacao?: string | null;
+    observacao?: string | null;
+    separado?: boolean | null;
+  }[]
 ): ItemDescritivoNormalizado[] {
   if (!raw?.length) return [];
   const out: ItemDescritivoNormalizado[] = [];
@@ -76,7 +86,12 @@ export function normalizarItensDescritivos(
     if (!descricao) continue;
     const variacao = row.variacao?.trim() ? row.variacao.trim() : null;
     const observacao = row.observacao?.trim() ? row.observacao.trim() : null;
-    out.push({ descricao, variacao, observacao });
+    const qRaw = Number(row.quantidade ?? 1);
+    const quantidade = Number.isFinite(qRaw)
+      ? Math.min(999, Math.max(1, Math.floor(qRaw)))
+      : 1;
+    const separado = Boolean(row.separado);
+    out.push({ descricao, quantidade, variacao, observacao, separado });
   }
   return out;
 }
@@ -217,8 +232,10 @@ export async function createLocacao(input: CreateLocacaoInput) {
               itensDescritivos: {
                 create: itensDesc.map((row, ordem) => ({
                   descricao: row.descricao,
+                  quantidade: row.quantidade,
                   variacao: row.variacao,
                   observacao: row.observacao,
+                  separado: row.separado,
                   ordem,
                 })),
               },
@@ -412,8 +429,10 @@ export async function patchLocacao(
     dataDevolucaoPrevista?: Date | null;
     itensDescritivos?: {
       descricao: string;
+      quantidade?: number | null;
       variacao?: string | null;
       observacao?: string | null;
+      separado?: boolean | null;
     }[];
   }
 ) {
@@ -459,8 +478,10 @@ export async function patchLocacao(
           data: itensNovos!.map((row, ordem) => ({
             locacaoId: id,
             descricao: row.descricao,
+            quantidade: row.quantidade,
             variacao: row.variacao,
             observacao: row.observacao,
+            separado: row.separado,
             ordem,
           })),
         });
@@ -477,8 +498,10 @@ export async function patchLocacao(
       dataDevolucaoPrevista: antes.dataDevolucaoPrevista,
       itensDescritivos: antes.itensDescritivos.map((i) => ({
         descricao: i.descricao,
+        quantidade: i.quantidade,
         variacao: i.variacao,
         observacao: i.observacao,
+        separado: i.separado,
       })),
     },
     depois: {
@@ -487,12 +510,40 @@ export async function patchLocacao(
       dataDevolucaoPrevista: loc.dataDevolucaoPrevista,
       itensDescritivos: loc.itensDescritivos.map((i) => ({
         descricao: i.descricao,
+        quantidade: i.quantidade,
         variacao: i.variacao,
         observacao: i.observacao,
+        separado: i.separado,
       })),
     },
   });
   return loc;
+}
+
+export async function patchLocacaoItemDescritivoSeparado(
+  locacaoId: string,
+  itemId: string,
+  separado: boolean
+) {
+  const loc = await prisma.locacao.findUnique({
+    where: { id: locacaoId },
+    select: { encerrada: true },
+  });
+  if (!loc) throw new AppError(404, "Locação não encontrada");
+  if (loc.encerrada) {
+    throw new AppError(400, "Locação encerrada: não é possível alterar acessórios");
+  }
+  const item = await prisma.locacaoItemDescritivo.findFirst({
+    where: { id: itemId, locacaoId },
+  });
+  if (!item) {
+    throw new AppError(404, "Acessório não encontrado nesta locação");
+  }
+  await prisma.locacaoItemDescritivo.update({
+    where: { id: itemId },
+    data: { separado },
+  });
+  return getLocacao(locacaoId);
 }
 
 export async function addRetirada(locacaoId: string, input: RetiradaInput) {
