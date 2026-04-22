@@ -1,7 +1,11 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { showPopup } from "../contexts/PopupContext";
-import { formatarResumoAcessoriosLocacao } from "../lib/acessoriosLocacao";
+import {
+  coalesceItensDescritivosFromLocacao,
+  formatarResumoAcessoriosLocacao,
+  isAcessorioIdPersistidoNoServidor,
+} from "../lib/acessoriosLocacao";
 import { apiGet, apiSend } from "../lib/api";
 import { subscribeTrajeCatalogLive } from "../lib/trajesCatalog";
 import {
@@ -71,6 +75,7 @@ type LocacaoRow = {
   cliente: { nome: string };
   retiradas: Retirada[];
   itensDescritivos?: LocacaoItemDescritivo[];
+  resumoAcessorios?: string | null;
 };
 
 function FotoPreviewModal({
@@ -240,7 +245,14 @@ export function LocacoesPage() {
       if (filtroDataEvento.trim()) p.set("dataEvento", filtroDataEvento.trim());
       const rows = await apiGet<LocacaoRow[]>(`/api/locacoes?${p.toString()}`);
       if (!cancelled) {
-        setList(rows);
+        setList(
+          rows.map((r) => ({
+            ...r,
+            itensDescritivos: coalesceItensDescritivosFromLocacao(
+              r as unknown as Record<string, unknown>
+            ) as LocacaoItemDescritivo[],
+          }))
+        );
         setLoading(false);
       }
     }
@@ -357,9 +369,11 @@ export function LocacoesPage() {
                             />
                           ))
                         )}
-                        {formatarResumoAcessoriosLocacao(l.itensDescritivos ?? []) && (
+                        {(l.resumoAcessorios?.trim() ||
+                          formatarResumoAcessoriosLocacao(l.itensDescritivos ?? [])) && (
                           <p className="text-xs text-muted mt-2 pt-2 border-t border-line/80">
-                            {formatarResumoAcessoriosLocacao(l.itensDescritivos ?? [])}
+                            {l.resumoAcessorios?.trim() ||
+                              formatarResumoAcessoriosLocacao(l.itensDescritivos ?? [])}
                           </p>
                         )}
                       </div>
@@ -1044,10 +1058,16 @@ type LocacaoDetalhe = {
   statusPagamento: string;
   cliente: Cliente;
   itensDescritivos: LocacaoItemDescritivo[];
+  /** Texto já montado pelo backend (GET/PATCH). */
+  resumoAcessorios?: string | null;
   retiradas: Retirada[];
 };
 
-export function LocacaoDetailPage({ id }: { id: string }) {
+export function LocacaoDetailPage({ id: idProp }: { id: string }) {
+  const params = useParams<{ id: string }>();
+  /** ID da locação na URL — fallback se a prop vier vazia (ex.: hot reload / rota). */
+  const locacaoId = (idProp?.trim() || params.id?.trim() || "").trim();
+
   const [loc, setLoc] = useState<LocacaoDetalhe | null>(null);
   const [payVal, setPayVal] = useState("");
   const [payTipo, setPayTipo] = useState("PARCIAL");
@@ -1066,13 +1086,29 @@ export function LocacaoDetailPage({ id }: { id: string }) {
   const [itensDescErr, setItensDescErr] = useState<string | null>(null);
 
   async function load() {
-    const row = await apiGet<LocacaoDetalhe>(`/api/locacoes/${id}`);
-    setLoc(row);
+    if (!locacaoId) return;
+    const row = (await apiGet(`/api/locacoes/${locacaoId}`)) as Record<string, unknown>;
+    if (import.meta.env.DEV) {
+      console.debug("[Locação] GET /api/locacoes/:id", row);
+    }
+    setLoc({
+      ...(row as unknown as LocacaoDetalhe),
+      itensDescritivos: coalesceItensDescritivosFromLocacao(row),
+    });
   }
 
   useEffect(() => {
+    if (!locacaoId) {
+      setErr("ID da locação ausente na URL — não é possível carregar nem salvar acessórios.");
+      return;
+    }
+    setErr(null);
     void load().catch((e: Error) => setErr(e.message));
-  }, [id]);
+  }, [locacaoId]);
+
+  useEffect(() => {
+    if (loc) console.log("Dados da locação:", loc);
+  }, [loc]);
 
   useEffect(() => {
     if (!loc) return;
@@ -1099,24 +1135,34 @@ export function LocacaoDetailPage({ id }: { id: string }) {
   }, [loc]);
 
   async function salvarItensDescritivos(e: FormEvent) {
+    console.log("Botão salvar acessórios clicado");
     e.preventDefault();
     setItensDescErr(null);
+    if (!locacaoId) {
+      const msg =
+        "locacaoId indefinido — verifique a URL (/locacoes/:id) e recarregue a página.";
+      console.error("Payload bloqueado:", { locacaoId, idProp, paramsId: params.id });
+      setItensDescErr(msg);
+      return;
+    }
     try {
-      const updated = await apiSend<LocacaoDetalhe>(`/api/locacoes/${id}`, "PATCH", {
-        itensDescritivos: itensDescForm
-          .filter((r) => r.descricao.trim())
-          .map((r) => ({
-            descricao: r.descricao.trim(),
-            quantidade: Math.min(
-              999,
-              Math.max(1, Math.floor(Number(r.quantidade)) || 1)
-            ),
-            variacao: r.variacao.trim() ? r.variacao.trim() : null,
-            observacao: r.observacao.trim() ? r.observacao.trim() : null,
-            separado: r.separado,
-          })),
-      });
-      setLoc(updated);
+      const acessorios = itensDescForm
+        .filter((r) => r.descricao.trim())
+        .map((r) => ({
+          nome: r.descricao.trim(),
+          quantidade: Math.min(
+            999,
+            Math.max(1, Math.floor(Number(r.quantidade)) || 1)
+          ),
+          variacao: r.variacao.trim() ? r.variacao.trim() : null,
+          observacao: r.observacao.trim() ? r.observacao.trim() : null,
+          separado: r.separado,
+        }));
+      const payload = { locacaoId, acessorios };
+      console.log("Payload:", { locacaoId, acessorios });
+      const resposta = await apiSend(`/api/locacoes/${locacaoId}`, "PATCH", payload);
+      console.log("Resposta API:", resposta);
+      await load();
       showPopup({
         type: "success",
         title: "Acessórios salvos",
@@ -1132,12 +1178,13 @@ export function LocacaoDetailPage({ id }: { id: string }) {
   async function setSeparadoEntregaItem(itemId: string, separado: boolean) {
     setItensDescErr(null);
     try {
-      const updated = await apiSend<LocacaoDetalhe>(
-        `/api/locacoes/${id}/itens-descritivos/${itemId}`,
-        "PATCH",
-        { separado }
-      );
-      setLoc(updated);
+      if (import.meta.env.DEV) {
+        console.debug("[Locação] PATCH separado", { itemId, separado });
+      }
+      await apiSend(`/api/locacoes/${locacaoId}/itens-descritivos/${itemId}`, "PATCH", {
+        separado,
+      });
+      await load();
     } catch (ex: unknown) {
       setItensDescErr(ex instanceof Error ? ex.message : "Erro ao atualizar");
     }
@@ -1169,7 +1216,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
 
   async function pagamento(e: FormEvent) {
     e.preventDefault();
-    await doAction(`/api/locacoes/${id}/pagamentos`, "POST", {
+    await doAction(`/api/locacoes/${locacaoId}/pagamentos`, "POST", {
       valor: Number(payVal),
       tipo: payTipo,
     });
@@ -1178,7 +1225,7 @@ export function LocacaoDetailPage({ id }: { id: string }) {
 
   async function salvarObservacoes(e: FormEvent) {
     e.preventDefault();
-    await apiSend(`/api/locacoes/${id}`, "PATCH", {
+    await apiSend(`/api/locacoes/${locacaoId}`, "PATCH", {
       observacoes: observacoesEdit.trim() ? observacoesEdit : null,
     });
     await load();
@@ -1210,6 +1257,10 @@ export function LocacaoDetailPage({ id }: { id: string }) {
   if (!loc) return <p>Carregando…</p>;
 
   const restante = Number(loc.valorTotal) - Number(loc.valorPago);
+  const textoResumoAcessorios =
+    (typeof loc.resumoAcessorios === "string" && loc.resumoAcessorios.trim().length > 0
+      ? loc.resumoAcessorios.trim()
+      : null) ?? formatarResumoAcessoriosLocacao(loc.itensDescritivos ?? []);
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -1221,10 +1272,12 @@ export function LocacaoDetailPage({ id }: { id: string }) {
           {new Date(loc.dataAluguel).toLocaleString("pt-BR")}{" "}
           · {loc.encerrada ? "Encerrada" : "Em aberto"}
         </p>
-        {formatarResumoAcessoriosLocacao(loc.itensDescritivos ?? []) && (
+        {textoResumoAcessorios ? (
           <p className="text-sm text-foreground mt-2 font-medium max-w-2xl">
-            {formatarResumoAcessoriosLocacao(loc.itensDescritivos ?? [])}
+            {textoResumoAcessorios}
           </p>
+        ) : (
+          <p className="text-sm text-muted mt-2">Sem acessórios.</p>
         )}
       </div>
 
@@ -1406,14 +1459,14 @@ export function LocacaoDetailPage({ id }: { id: string }) {
                       className="rounded border-line"
                       checked={row.separado}
                       title={
-                        row.id
+                        isAcessorioIdPersistidoNoServidor(row.id)
                           ? "Atualiza na hora no servidor"
                           : "Será gravado ao clicar em Salvar lista de acessórios"
                       }
                       onChange={(e) => {
                         const checked = e.target.checked;
-                        if (row.id) {
-                          void setSeparadoEntregaItem(row.id, checked);
+                        if (isAcessorioIdPersistidoNoServidor(row.id)) {
+                          void setSeparadoEntregaItem(row.id!, checked);
                         } else {
                           setItensDescForm((rows) =>
                             rows.map((r, i) => (i === idx ? { ...r, separado: checked } : r))
@@ -1451,6 +1504,13 @@ export function LocacaoDetailPage({ id }: { id: string }) {
           </form>
         )}
       </section>
+
+      {textoResumoAcessorios ? (
+        <p className="text-sm text-foreground -mt-4 max-w-2xl border-l-4 border-primary/40 pl-3 py-1">
+          <span className="text-muted font-normal">Resumo do aluguel — </span>
+          {textoResumoAcessorios}
+        </p>
+      ) : null}
 
       <section className="space-y-4">
         <h2 className="text-lg font-medium text-foreground">Retiradas e trajes (com código)</h2>

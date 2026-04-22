@@ -112,11 +112,24 @@ export const locacaoCreateSchema = z.object({
   itensDescritivos: z.array(locacaoItemDescritivoLinha).optional().default([]),
 });
 
+/** Mesma linha de acessório, com `nome` (alias de `descricao`) para o cliente. */
+export const locacaoAcessorioLinhaPayload = z.object({
+  nome: z.string().min(1).max(200),
+  quantidade: z.coerce.number().int().min(1).max(999).optional().default(1),
+  variacao: z.string().max(200).optional().nullable(),
+  observacao: z.string().max(500).optional().nullable(),
+  separado: z.boolean().optional().default(false),
+});
+
 export const locacaoPatchSchema = z.object({
   observacoes: z.string().optional().nullable(),
   dataEvento: z.coerce.date().optional().nullable(),
   dataDevolucaoPrevista: z.coerce.date().optional().nullable(),
-  /** Se enviado, substitui toda a lista (use `[]` para limpar). */
+  /** Deve coincidir com o `:id` da URL ao salvar acessórios (evita vínculo errado). */
+  locacaoId: z.string().min(1).optional(),
+  /** Se enviado, substitui toda a lista (use `[]` para limpar). Tem precedência sobre `itensDescritivos`. */
+  acessorios: z.array(locacaoAcessorioLinhaPayload).optional(),
+  /** Se enviado, substitui toda a lista (use `[]` para limpar). Ignorado se `acessorios` vier no mesmo corpo. */
   itensDescritivos: z.array(locacaoItemDescritivoLinha).optional(),
 });
 

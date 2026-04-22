@@ -1153,6 +1153,7 @@ export async function listarPagamentosPendentes() {
     },
     include: {
       cliente: true,
+      itensDescritivos: { orderBy: { ordem: "asc" } },
       retiradas: {
         include: { trajesLocados: { include: { traje: true } } },
       },

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { formatarResumoAcessoriosLocacao } from "../lib/acessoriosLocacao";
+import {
+  coalesceItensDescritivosFromLocacao,
+  formatarResumoAcessoriosLocacao,
+} from "../lib/acessoriosLocacao";
 import { apiGet } from "../lib/api";
 import { formatarTelefone } from "../lib/telefone";
 import {
@@ -49,6 +52,8 @@ type Detalhe = {
     observacao: string | null;
     separado: boolean;
   }[];
+  acessorios?: { id: string; nome: string; quantidade: number }[];
+  resumoAcessorios?: string | null;
 };
 
 export function FinanceiroLocacaoDetalhePage() {
@@ -78,7 +83,14 @@ export function FinanceiroLocacaoDetalhePage() {
     return <p className="text-muted">Carregando…</p>;
   }
 
-  const { locacao, cliente, retiradas, itensDescritivos } = data;
+  const { locacao, cliente, retiradas, resumoAcessorios } = data;
+  const itensCoalescidos = coalesceItensDescritivosFromLocacao(
+    data as unknown as Record<string, unknown>
+  );
+  const textoResumoAcc =
+    (resumoAcessorios && resumoAcessorios.trim().length > 0
+      ? resumoAcessorios.trim()
+      : null) ?? formatarResumoAcessoriosLocacao(itensCoalescidos);
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -101,6 +113,11 @@ export function FinanceiroLocacaoDetalhePage() {
         <p className="text-sm text-muted mt-1">
           Valores, retiradas e trajes desta locação
         </p>
+        {textoResumoAcc ? (
+          <p className="text-sm font-medium text-foreground mt-2">{textoResumoAcc}</p>
+        ) : (
+          <p className="text-sm text-muted mt-2">Sem acessórios.</p>
+        )}
       </div>
 
       <section className="rounded-2xl border border-line bg-surface p-5 shadow-md space-y-3">
@@ -182,17 +199,15 @@ export function FinanceiroLocacaoDetalhePage() {
         <p className="text-xs text-muted">
           Itens só descritos na locação, sem identificação no estoque.
         </p>
-        {itensDescritivos.length === 0 ? (
+        {itensCoalescidos.length === 0 ? (
           <p className="text-sm text-muted">Nenhum item deste tipo nesta locação.</p>
         ) : (
           <>
-            {formatarResumoAcessoriosLocacao(itensDescritivos) && (
-              <p className="text-sm font-medium text-foreground">
-                {formatarResumoAcessoriosLocacao(itensDescritivos)}
-              </p>
-            )}
+            {textoResumoAcc ? (
+              <p className="text-sm font-medium text-foreground">{textoResumoAcc}</p>
+            ) : null}
             <ul className="divide-y divide-line border border-line rounded-lg overflow-hidden text-sm">
-              {itensDescritivos.map((i) => (
+              {itensCoalescidos.map((i) => (
                 <li
                   key={i.id}
                   className="p-3 bg-hover-gray/40 flex flex-wrap gap-2 justify-between items-start"

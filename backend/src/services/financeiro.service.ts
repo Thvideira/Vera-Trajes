@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { resumoAcessoriosLocacao } from "../utils/locacaoResponse.js";
 import { computeRemaining } from "./finance.service.js";
 
 /**
@@ -64,5 +65,14 @@ export async function getFinanceiroLocacaoDetalhe(locacaoId: string) {
       observacao: i.observacao,
       separado: i.separado,
     })),
+    acessorios: loc.itensDescritivos.map((i) => ({
+      id: i.id,
+      nome: i.descricao,
+      quantidade: i.quantidade,
+      variacao: i.variacao,
+      observacao: i.observacao,
+      separado: i.separado,
+    })),
+    resumoAcessorios: resumoAcessoriosLocacao(loc.itensDescritivos),
   };
 }
