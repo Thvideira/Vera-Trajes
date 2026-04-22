@@ -20,6 +20,18 @@ export function isAcessorioIdPersistidoNoServidor(id: string | undefined): boole
   return Boolean(id && !id.startsWith(ID_LOCAL_PREFIX));
 }
 
+/** Normaliza `separado` vindo de JSON/Prisma (evita `Boolean("false") === true`). */
+export function parseSeparadoValor(v: unknown): boolean {
+  if (v === true || v === 1) return true;
+  if (v === false || v === 0 || v === null || v === undefined) return false;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (s === "true" || s === "1" || s === "sim" || s === "yes") return true;
+    if (s === "false" || s === "0" || s === "nao" || s === "não" || s === "no" || s === "") return false;
+  }
+  return Boolean(v);
+}
+
 function pickDescritivosOuAcessoriosArray(row: Record<string, unknown>): unknown[] {
   const fromItens = row.itensDescritivos;
   const fromItensSnake = row.itens_descritivos;
@@ -70,6 +82,10 @@ export function coalesceItensDescritivosFromLocacao(row: Record<string, unknown>
     const descStr = String(desc ?? "").trim();
     if (!descStr) continue;
     const id = idTrim || `${ID_LOCAL_PREFIX}${slot++}`;
+    const separadoRaw =
+      x.separado !== undefined && x.separado !== null
+        ? x.separado
+        : x.separado_entrega;
     out.push({
       id,
       descricao: descStr,
@@ -82,7 +98,7 @@ export function coalesceItensDescritivosFromLocacao(row: Record<string, unknown>
         x.observacao != null && String(x.observacao).trim() !== ""
           ? String(x.observacao)
           : null,
-      separado: Boolean(x.separado),
+      separado: parseSeparadoValor(separadoRaw),
     });
   }
   return out;

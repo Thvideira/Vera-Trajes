@@ -11,6 +11,7 @@ import {
   TrajeStatus,
 } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { clampDataRetiradaCriacaoUtc } from "../utils/dataRetiradaSugestao.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { computeRemaining, derivePaymentStatus } from "./finance.service.js";
 import { registrarHistorico } from "./locacaoHistorico.service.js";
@@ -174,7 +175,15 @@ function coletarTrajeIdsDaLocacao(loc: {
 }
 
 export async function createLocacao(input: CreateLocacaoInput) {
-  const retiradasValidas = filtrarRetiradasValidas(input.retiradas);
+  const agoraCriacao = new Date();
+  const retiradasValidas = filtrarRetiradasValidas(input.retiradas).map((r) => ({
+    ...r,
+    dataRetirada: clampDataRetiradaCriacaoUtc(
+      r.dataRetirada,
+      input.dataEvento,
+      agoraCriacao
+    ),
+  }));
   if (!retiradasValidas.length) {
     throw new AppError(
       400,
@@ -391,6 +400,7 @@ export async function listLocacoes(filters: {
   );
 }
 
+/** GET/PATCH de locação: inclui `itensDescritivos` (acessórios sem código), ordenados. */
 export async function getLocacao(id: string) {
   const l = await prisma.locacao.findUnique({
     where: { id },

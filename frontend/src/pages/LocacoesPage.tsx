@@ -1,11 +1,11 @@
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { showPopup } from "../contexts/PopupContext";
 import {
   coalesceItensDescritivosFromLocacao,
   formatarResumoAcessoriosLocacao,
-  isAcessorioIdPersistidoNoServidor,
 } from "../lib/acessoriosLocacao";
+import { sugerirDataRetiradaDatetimeLocal } from "../lib/dataRetiradaSugestao";
 import { apiGet, apiSend } from "../lib/api";
 import { subscribeTrajeCatalogLive } from "../lib/trajesCatalog";
 import {
@@ -63,6 +63,22 @@ function linhaItemDescritivoVazia(): LinhaItemDescritivoForm {
     observacao: "",
     separado: false,
   };
+}
+
+/** Linhas do formulário → corpo `acessorios` do PATCH `PATCH /api/locacoes/:id`. */
+function linhasFormParaAcessoriosApiPayload(rows: LinhaItemDescritivoForm[]) {
+  return rows
+    .filter((r) => r.descricao.trim())
+    .map((r) => ({
+      nome: r.descricao.trim(),
+      quantidade: Math.min(
+        999,
+        Math.max(1, Math.floor(Number(r.quantidade)) || 1)
+      ),
+      variacao: r.variacao.trim() ? r.variacao.trim() : null,
+      observacao: r.observacao.trim() ? r.observacao.trim() : null,
+      separado: Boolean(r.separado),
+    }));
 }
 
 type LocacaoRow = {
@@ -188,7 +204,12 @@ type LinhaTraje = {
   ajustes: { tipo: string; descricao?: string }[];
 };
 
-type LinhaRetirada = { dataRetirada: string; trajes: LinhaTraje[] };
+type LinhaRetirada = {
+  dataRetirada: string;
+  trajes: LinhaTraje[];
+  /** Se true/omitido, data de retirada segue a sugestão ao mudar o evento; se false, o admin editou manualmente. */
+  sugestaoAtiva?: boolean;
+};
 
 function retiradaLinhaEstaVazia(r: LinhaRetirada): boolean {
   const dataOk = parseDataRetiradaInput(r.dataRetirada);
@@ -416,6 +437,8 @@ export function LocacoesPage() {
 
 export function LocacaoNovaPage() {
   const navigate = useNavigate();
+  /** Instante de referência do cadastro (dia do “aluguel” na regra de clamp). */
+  const referenciaAluguelRef = useRef(new Date());
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -427,7 +450,11 @@ export function LocacaoNovaPage() {
     valorPagoInicial: "0",
   });
   const [retiradas, setRetiradas] = useState<LinhaRetirada[]>([
-    { dataRetirada: "", trajes: [{ trajeId: "", precisaLavagem: true, ajustes: [] }] },
+    {
+      dataRetirada: "",
+      trajes: [{ trajeId: "", precisaLavagem: true, ajustes: [] }],
+      sugestaoAtiva: true,
+    },
   ]);
   const [itensDescritivos, setItensDescritivos] = useState([linhaItemDescritivoVazia()]);
 
@@ -436,13 +463,23 @@ export function LocacaoNovaPage() {
   }, []);
 
   function addRetirada() {
-    setRetiradas((r) => [
-      ...r,
-      {
-        dataRetirada: "",
-        trajes: [{ trajeId: "", precisaLavagem: true, ajustes: [] }],
-      },
-    ]);
+    setRetiradas((r) => {
+      const sug =
+        form.dataEvento.trim().length > 0
+          ? sugerirDataRetiradaDatetimeLocal(
+              form.dataEvento,
+              referenciaAluguelRef.current
+            )
+          : "";
+      return [
+        ...r,
+        {
+          dataRetirada: sug,
+          trajes: [{ trajeId: "", precisaLavagem: true, ajustes: [] }],
+          sugestaoAtiva: true,
+        },
+      ];
+    });
   }
 
   function addTraje(ri: number) {
@@ -560,9 +597,9 @@ export function LocacaoNovaPage() {
         dataDevolucaoPrevista: form.dataDevolucaoPrevista || undefined,
         valorTotal: Number(form.valorTotal),
         valorPagoInicial: Number(form.valorPagoInicial || 0),
-        retiradas: retiradas.map((r) => ({
-          dataRetirada: r.dataRetirada || undefined,
-          trajes: r.trajes.map((t) => ({
+        retiradas: retiradas.map(({ dataRetirada, trajes }) => ({
+          dataRetirada: dataRetirada || undefined,
+          trajes: trajes.map((t) => ({
             trajeId: t.trajeId.trim() || undefined,
             precisaLavagem: t.precisaLavagem,
             ajustes: t.ajustes.length ? t.ajustes : undefined,
@@ -644,12 +681,26 @@ export function LocacaoNovaPage() {
               required
               className="w-full rounded-lg border px-3 py-2"
               value={form.dataEvento}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, dataEvento: e.target.value }))
-              }
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm((f) => ({ ...f, dataEvento: v }));
+                if (!v.trim()) return;
+                const sug = sugerirDataRetiradaDatetimeLocal(
+                  v,
+                  referenciaAluguelRef.current
+                );
+                if (!sug) return;
+                setRetiradas((rows) =>
+                  rows.map((row) =>
+                    row.sugestaoAtiva === false ? row : { ...row, dataRetirada: sug }
+                  )
+                );
+              }}
             />
             <p className="text-xs text-muted mt-1">
               Obrigatória: sem ela não é possível alugar trajes; usada na regra dos 5 dias entre locações do mesmo traje.
+              A data de retirada é sugerida automaticamente (2 dias antes do evento; se não couber no calendário, usa o dia
+              do cadastro desta locação). Você pode alterar cada retirada manualmente.
             </p>
           </div>
           <div>
@@ -809,6 +860,11 @@ export function LocacaoNovaPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
             <div>
               <span className="font-medium">Retiradas — trajes com código</span>
+              <p className="text-xs text-muted mt-1 max-w-xl">
+                A data de cada retirada pode ser sugerida automaticamente a partir do evento; se
+                alterar manualmente um campo, essa retirada deixa de ser atualizada ao mudar o
+                evento.
+              </p>
               {temRetiradaVaziaNoFormulario && (
                 <p className="text-xs text-warning-fg mt-1">
                   Retirada sem data ou sem traje será ignorada ao salvar.
@@ -838,7 +894,9 @@ export function LocacaoNovaPage() {
                       const v = e.target.value;
                       setRetiradas((rows) =>
                         rows.map((row, i) =>
-                          i === ri ? { ...row, dataRetirada: v } : row
+                          i === ri
+                            ? { ...row, dataRetirada: v, sugestaoAtiva: false }
+                            : row
                         )
                       );
                     }}
@@ -1077,13 +1135,11 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
   const [dataRetiradaEdits, setDataRetiradaEdits] = useState<Record<string, string>>(
     {}
   );
-  const [novoTrajeRetirada, setNovoTrajeRetirada] = useState<Record<string, string>>(
-    {}
-  );
   const [itensDescForm, setItensDescForm] = useState<LinhaItemDescritivoForm[]>([
     linhaItemDescritivoVazia(),
   ]);
   const [itensDescErr, setItensDescErr] = useState<string | null>(null);
+  const [acessoriosMutating, setAcessoriosMutating] = useState(false);
 
   async function load() {
     if (!locacaoId) return;
@@ -1137,6 +1193,7 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
   async function salvarItensDescritivos(e: FormEvent) {
     console.log("Botão salvar acessórios clicado");
     e.preventDefault();
+    if (acessoriosMutating) return;
     setItensDescErr(null);
     if (!locacaoId) {
       const msg =
@@ -1145,19 +1202,9 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
       setItensDescErr(msg);
       return;
     }
+    setAcessoriosMutating(true);
     try {
-      const acessorios = itensDescForm
-        .filter((r) => r.descricao.trim())
-        .map((r) => ({
-          nome: r.descricao.trim(),
-          quantidade: Math.min(
-            999,
-            Math.max(1, Math.floor(Number(r.quantidade)) || 1)
-          ),
-          variacao: r.variacao.trim() ? r.variacao.trim() : null,
-          observacao: r.observacao.trim() ? r.observacao.trim() : null,
-          separado: r.separado,
-        }));
+      const acessorios = linhasFormParaAcessoriosApiPayload(itensDescForm);
       const payload = { locacaoId, acessorios };
       console.log("Payload:", { locacaoId, acessorios });
       const resposta = await apiSend(`/api/locacoes/${locacaoId}`, "PATCH", payload);
@@ -1172,21 +1219,37 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
       });
     } catch (ex: unknown) {
       setItensDescErr(ex instanceof Error ? ex.message : "Erro ao salvar");
+    } finally {
+      setAcessoriosMutating(false);
     }
   }
 
-  async function setSeparadoEntregaItem(itemId: string, separado: boolean) {
+  async function toggleSeparado(index: number) {
+    if (!locacaoId) return;
+    const rows = itensDescForm.map((r, i) =>
+      i === index ? { ...r, separado: !r.separado } : r
+    );
+    setItensDescForm(rows);
+    const acessorios = linhasFormParaAcessoriosApiPayload(rows);
+    if (acessorios.length === 0) {
+      setItensDescErr(null);
+      return;
+    }
     setItensDescErr(null);
+    setAcessoriosMutating(true);
     try {
-      if (import.meta.env.DEV) {
-        console.debug("[Locação] PATCH separado", { itemId, separado });
-      }
-      await apiSend(`/api/locacoes/${locacaoId}/itens-descritivos/${itemId}`, "PATCH", {
-        separado,
+      await apiSend(`/api/locacoes/${locacaoId}`, "PATCH", {
+        locacaoId,
+        acessorios,
       });
       await load();
     } catch (ex: unknown) {
-      setItensDescErr(ex instanceof Error ? ex.message : "Erro ao atualizar");
+      setItensDescErr(
+        ex instanceof Error ? ex.message : "Erro ao salvar status separado"
+      );
+      await load().catch(() => {});
+    } finally {
+      setAcessoriosMutating(false);
     }
   }
 
@@ -1239,17 +1302,6 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
     await apiSend(`/api/retiradas/${retiradaId}`, "PATCH", {
       dataRetirada: d.toISOString(),
     });
-    await load();
-  }
-
-  async function adicionarTrajeNaRetirada(retiradaId: string) {
-    const tid = (novoTrajeRetirada[retiradaId] ?? "").trim();
-    if (!tid) return;
-    await apiSend(`/api/retiradas/${retiradaId}/trajes`, "POST", {
-      trajeId: tid,
-      precisaLavagem: true,
-    });
-    setNovoTrajeRetirada((o) => ({ ...o, [retiradaId]: "" }));
     await load();
   }
 
@@ -1371,11 +1423,11 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
                     ) : null}
                   </div>
                   {i.separado ? (
-                    <span className="text-xs shrink-0 px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-200">
-                      Separado p/ entrega
+                    <span className="text-xs shrink-0 px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-200 font-semibold">
+                      Pronto para entrega
                     </span>
                   ) : (
-                    <span className="text-xs shrink-0 text-muted">Não separado</span>
+                    <span className="text-xs shrink-0 text-muted">Aguardando separação</span>
                   )}
                 </li>
               ))}
@@ -1383,6 +1435,56 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
           )
         ) : (
           <form onSubmit={salvarItensDescritivos} className="space-y-3">
+            <p className="text-xs text-muted">
+              Edite os campos abaixo e use <strong>Salvar lista de acessórios</strong> para gravar
+              nome, quantidade e observações. No bloco <strong>Acessórios cadastrados</strong>, o
+              botão <strong>Marcar como separado</strong> grava na hora no servidor.
+            </p>
+            {itensDescForm.some((r) => r.descricao.trim()) && (
+              <div className="rounded-lg border border-line bg-hover-gray/30 p-3 space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">Acessórios cadastrados</h3>
+                <ul className="space-y-2 text-sm">
+                  {itensDescForm.map((item, index) =>
+                    !item.descricao.trim() ? null : (
+                      <li
+                        key={item.id ?? `cad-${index}`}
+                        className="flex flex-wrap items-center gap-2 justify-between rounded-md border border-line bg-surface px-3 py-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span className="font-medium text-foreground">{item.descricao}</span>
+                          <span className="text-muted"> · Qtd. {item.quantidade}</span>
+                          {item.variacao.trim() ? (
+                            <span className="text-muted"> · {item.variacao}</span>
+                          ) : null}
+                          {item.observacao.trim() ? (
+                            <p className="text-xs text-muted mt-0.5">Obs.: {item.observacao}</p>
+                          ) : null}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          {item.separado ? (
+                            <span className="text-xs font-semibold text-green-700">
+                              Pronto para entrega
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            className={
+                              item.separado
+                                ? "text-xs px-2 py-1 rounded-lg border border-green-300 bg-green-50 text-green-900"
+                                : "text-xs px-2 py-1 rounded-lg border border-line bg-surface hover:bg-hover-gray/60"
+                            }
+                            disabled={acessoriosMutating}
+                            onClick={() => void toggleSeparado(index)}
+                          >
+                            {item.separado ? "Separado" : "Marcar como separado"}
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  )}
+                </ul>
+              </div>
+            )}
             {itensDescForm.map((row, idx) => (
               <div
                 key={row.id ?? `new-${idx}`}
@@ -1452,37 +1554,13 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
                     }}
                   />
                 </div>
-                <div className="sm:col-span-2 flex flex-col gap-2">
-                  <label className="flex items-center gap-2 text-xs cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="rounded border-line"
-                      checked={row.separado}
-                      title={
-                        isAcessorioIdPersistidoNoServidor(row.id)
-                          ? "Atualiza na hora no servidor"
-                          : "Será gravado ao clicar em Salvar lista de acessórios"
-                      }
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        if (isAcessorioIdPersistidoNoServidor(row.id)) {
-                          void setSeparadoEntregaItem(row.id!, checked);
-                        } else {
-                          setItensDescForm((rows) =>
-                            rows.map((r, i) => (i === idx ? { ...r, separado: checked } : r))
-                          );
-                        }
-                      }}
-                    />
-                    <span className={row.separado ? "text-green-700 font-medium" : "text-muted"}>
-                      Separado p/ entrega
-                    </span>
-                  </label>
+                <div className="sm:col-span-2 flex flex-col gap-2 justify-end">
                   {itensDescForm.length > 1 && (
                     <button
                       type="button"
                       className="text-xs text-red-700 px-2 py-1 border border-red-200 rounded-lg self-start"
                       onClick={() => removeLinhaItemDescForm(idx)}
+                      disabled={acessoriosMutating}
                     >
                       Remover linha
                     </button>
@@ -1491,10 +1569,19 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
               </div>
             ))}
             <div className="flex flex-wrap gap-2 items-center">
-              <button type="button" className="text-sm underline" onClick={addLinhaItemDescForm}>
+              <button
+                type="button"
+                className="text-sm underline"
+                onClick={addLinhaItemDescForm}
+                disabled={acessoriosMutating}
+              >
                 + Linha
               </button>
-              <button type="submit" className="btn-secondary text-sm">
+              <button
+                type="submit"
+                className="btn-secondary text-sm"
+                disabled={acessoriosMutating}
+              >
                 Salvar lista de acessórios
               </button>
             </div>
@@ -1528,57 +1615,29 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
               </span>
             </div>
             {!loc.encerrada && (
-              <div className="px-4 py-3 bg-pink-soft/50 border-b border-line space-y-4">
-                <div>
-                  <p className="text-xs font-medium text-muted mb-1">
-                    Alterar data / hora da retirada
-                  </p>
-                  <div className="flex flex-wrap gap-2 items-end">
-                    <input
-                      type="datetime-local"
-                      className="input-field max-w-[220px]"
-                      value={dataRetiradaEdits[r.id] ?? ""}
-                      onChange={(e) =>
-                        setDataRetiradaEdits((prev) => ({
-                          ...prev,
-                          [r.id]: e.target.value,
-                        }))
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="btn-secondary text-sm"
-                      onClick={() => void salvarDataRetirada(r.id)}
-                    >
-                      Salvar data
-                    </button>
-                  </div>
-                </div>
-                <div className="pt-2 border-t border-line">
-                  <p className="text-xs font-medium text-muted mb-2">
-                    Incluir traje nesta retirada
-                  </p>
-                  <div className="flex flex-wrap gap-2 items-end">
-                    <div className="flex-1 min-w-[200px]">
-                      <TrajePicker
-                        incluirTrajesEmUso
-                        value={novoTrajeRetirada[r.id] ?? ""}
-                        onChange={(trajeId) =>
-                          setNovoTrajeRetirada((prev) => ({
-                            ...prev,
-                            [r.id]: trajeId,
-                          }))
-                        }
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-primary text-sm"
-                      onClick={() => void adicionarTrajeNaRetirada(r.id)}
-                    >
-                      Adicionar traje
-                    </button>
-                  </div>
+              <div className="px-4 py-3 bg-pink-soft/50 border-b border-line">
+                <p className="text-xs font-medium text-muted mb-1">
+                  Alterar data / hora da retirada
+                </p>
+                <div className="flex flex-wrap gap-2 items-end">
+                  <input
+                    type="datetime-local"
+                    className="input-field max-w-[220px]"
+                    value={dataRetiradaEdits[r.id] ?? ""}
+                    onChange={(e) =>
+                      setDataRetiradaEdits((prev) => ({
+                        ...prev,
+                        [r.id]: e.target.value,
+                      }))
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary text-sm"
+                    onClick={() => void salvarDataRetirada(r.id)}
+                  >
+                    Salvar data
+                  </button>
                 </div>
               </div>
             )}

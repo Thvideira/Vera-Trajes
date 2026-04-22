@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   coalesceItensDescritivosFromLocacao,
   isAcessorioIdPersistidoNoServidor,
+  parseSeparadoValor,
 } from "./acessoriosLocacao";
 
 describe("coalesceItensDescritivosFromLocacao", () => {
@@ -54,6 +55,28 @@ describe("coalesceItensDescritivosFromLocacao", () => {
       itens_descritivos: [{ id: "s1", descricao: "Meia", quantidade: 1 }],
     };
     expect(coalesceItensDescritivosFromLocacao(row)[0]?.descricao).toBe("Meia");
+  });
+
+  it("mapeia separado a partir de string false e separado_entrega", () => {
+    expect(
+      coalesceItensDescritivosFromLocacao({
+        acessorios: [{ nome: "X", separado: "false" }],
+      })[0]?.separado
+    ).toBe(false);
+    expect(
+      coalesceItensDescritivosFromLocacao({
+        acessorios: [{ nome: "Y", separado_entrega: true }],
+      })[0]?.separado
+    ).toBe(true);
+  });
+});
+
+describe("parseSeparadoValor", () => {
+  it("interpreta strings comuns", () => {
+    expect(parseSeparadoValor("false")).toBe(false);
+    expect(parseSeparadoValor("true")).toBe(true);
+    expect(parseSeparadoValor("não")).toBe(false);
+    expect(parseSeparadoValor("sim")).toBe(true);
   });
 });
 

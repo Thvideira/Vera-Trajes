@@ -8,7 +8,11 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["tests/frontend/setup.ts"],
-    include: ["tests/frontend/**/*.test.ts", "tests/frontend/**/*.test.tsx"],
+    include: [
+      "tests/frontend/**/*.test.ts",
+      "tests/frontend/**/*.test.tsx",
+      "src/**/*.test.ts",
+    ],
     css: true,
   },
 });
