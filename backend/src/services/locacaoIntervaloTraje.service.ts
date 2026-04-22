@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import { LocacaoStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import {
@@ -23,6 +24,7 @@ export async function listarDatasLocacoesPorTraje(
       retirada: {
         locacao: {
           encerrada: false,
+          statusLocacao: LocacaoStatus.ATIVA,
           ...(excludeLocacaoId ? { id: { not: excludeLocacaoId } } : {}),
         },
       },

@@ -1,8 +1,10 @@
 import type { Request, Response } from "express";
+import { env } from "../config/env.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { requireParam } from "../utils/param.js";
 import {
   listLocacaoQuerySchema,
+  locacaoCancelarSchema,
   locacaoCreateSchema,
   locacaoItemDescritivoSeparadoSchema,
   locacaoPatchSchema,
@@ -145,6 +147,17 @@ export async function postPagamento(req: Request, res: Response) {
     body.valor,
     body.tipo
   );
+  res.json(withAcessoriosPublicos(row));
+}
+
+export async function postCancelarLocacao(req: Request, res: Response) {
+  const id = requireParam(req.params.id);
+  const body = locacaoCancelarSchema.parse(req.body ?? {});
+  const adminUserId = env.AUTH_DISABLED ? null : (req.user?.sub ?? null);
+  const row = await service.cancelarLocacao(id, {
+    motivo: body.motivo ?? null,
+    adminUserId,
+  });
   res.json(withAcessoriosPublicos(row));
 }
 

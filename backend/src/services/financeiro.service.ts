@@ -32,6 +32,9 @@ export async function getFinanceiroLocacaoDetalhe(locacaoId: string) {
     locacao: {
       id: loc.id,
       encerrada: loc.encerrada,
+      statusLocacao: loc.statusLocacao,
+      canceladaEm: loc.canceladaEm,
+      canceladaMotivo: loc.canceladaMotivo,
       statusPagamento: loc.statusPagamento,
       valorTotal: loc.valorTotal.toString(),
       valorPago: loc.valorPago.toString(),

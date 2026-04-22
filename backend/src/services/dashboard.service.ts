@@ -1,6 +1,7 @@
 import {
   AjusteStatus,
   LavagemStatus,
+  LocacaoStatus,
   TrajeStatus,
   type TrajeLocadoStatus,
 } from "@prisma/client";
@@ -40,6 +41,7 @@ export async function getDashboard() {
     prisma.locacao.findMany({
       where: {
         encerrada: false,
+        statusLocacao: LocacaoStatus.ATIVA,
         retiradas: {
           some: {
             dataRetirada: { lte: em7, gte: hoje },
@@ -58,7 +60,7 @@ export async function getDashboard() {
       take: 10,
     }),
     prisma.locacao.findMany({
-      where: { encerrada: false },
+      where: { encerrada: false, statusLocacao: LocacaoStatus.ATIVA },
       include: {
         cliente: true,
         retiradas: {
@@ -70,7 +72,10 @@ export async function getDashboard() {
       where: {
         retirada: {
           dataRetirada: { gte: inicioProx, lte: fimProx },
-          locacao: { encerrada: false },
+          locacao: {
+            encerrada: false,
+            statusLocacao: LocacaoStatus.ATIVA,
+          },
         },
         status: {
           // Literais: evitam `undefined` se o client Prisma em disco não foi

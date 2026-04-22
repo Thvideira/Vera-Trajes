@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { showPopup } from "../contexts/PopupContext";
+import { confirmAsync, showPopup } from "../contexts/PopupContext";
 import {
   coalesceItensDescritivosFromLocacao,
   formatarResumoAcessoriosLocacao,
@@ -86,6 +86,8 @@ type LocacaoRow = {
   dataAluguel: string;
   dataEvento: string | null;
   encerrada: boolean;
+  /** ATIVA | CANCELADA — ausente em respostas antigas equivale a ATIVA. */
+  statusLocacao?: string;
   valorTotal: string;
   valorPago: string;
   cliente: { nome: string };
@@ -354,10 +356,14 @@ export function LocacoesPage() {
             ) : (
               list.map((l) => {
                 const trajesFlat = (l.retiradas ?? []).flatMap((r) => r.trajesLocados);
+                const cancelada = l.statusLocacao === "CANCELADA";
                 return (
                   <tr
                     key={l.id}
-                    className="border-b border-line align-top transition-colors hover:bg-pink-soft"
+                    className={
+                      "border-b border-line align-top transition-colors hover:bg-pink-soft" +
+                      (cancelada ? " bg-rose-50/60 dark:bg-rose-950/25" : "")
+                    }
                   >
                     <td className="p-3">{l.cliente.nome}</td>
                     <td className="p-3 whitespace-nowrap">
@@ -400,7 +406,11 @@ export function LocacoesPage() {
                       </div>
                     </td>
                     <td className="p-3">
-                      {l.encerrada ? (
+                      {cancelada ? (
+                        <span className="inline-flex items-center rounded-full border border-rose-300 bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-900">
+                          Cancelada
+                        </span>
+                      ) : l.encerrada ? (
                         <span className="text-muted">Encerrada</span>
                       ) : (
                         <span className="text-success">Em aberto</span>
@@ -1110,6 +1120,9 @@ type LocacaoDetalhe = {
   id: string;
   dataAluguel: string;
   encerrada: boolean;
+  statusLocacao?: string;
+  canceladaEm?: string | null;
+  canceladaMotivo?: string | null;
   observacoes: string | null;
   valorTotal: string;
   valorPago: string;
@@ -1140,6 +1153,8 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
   ]);
   const [itensDescErr, setItensDescErr] = useState<string | null>(null);
   const [acessoriosMutating, setAcessoriosMutating] = useState(false);
+  const [cancelMotivoDraft, setCancelMotivoDraft] = useState("");
+  const [cancelando, setCancelando] = useState(false);
 
   async function load() {
     if (!locacaoId) return;
@@ -1286,6 +1301,52 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
     setPayVal("");
   }
 
+  async function executarCancelarLocacao() {
+    if (!locacaoId || !loc) return;
+    if (loc.statusLocacao === "CANCELADA") return;
+    if (loc.encerrada) {
+      showPopup({
+        type: "warning",
+        title: "Não disponível",
+        message:
+          "Só é possível cancelar locações em aberto (ainda não encerradas por devolução de todos os trajes).",
+        confirmText: "OK",
+      });
+      return;
+    }
+    const ok = await confirmAsync({
+      type: "warning",
+      danger: true,
+      title: "Cancelar locação",
+      message:
+        "Os pagamentos registrados serão estornados no financeiro, os trajes voltarão ao estoque como disponíveis e a locação ficará como cancelada. Deseja continuar?",
+      confirmText: "Sim, cancelar",
+      cancelText: "Voltar",
+    });
+    if (!ok) return;
+    setCancelando(true);
+    setErr(null);
+    try {
+      await apiSend(`/api/locacoes/${locacaoId}/cancelar`, "POST", {
+        motivo: cancelMotivoDraft.trim() || undefined,
+      });
+      setCancelMotivoDraft("");
+      await load();
+      showPopup({
+        type: "success",
+        title: "Locação cancelada",
+        message:
+          "Cancelamento registrado: estorno financeiro aplicado e trajes liberados.",
+        confirmText: "OK",
+        autoCloseMs: 3200,
+      });
+    } catch (ex: unknown) {
+      setErr(ex instanceof Error ? ex.message : "Erro ao cancelar");
+    } finally {
+      setCancelando(false);
+    }
+  }
+
   async function salvarObservacoes(e: FormEvent) {
     e.preventDefault();
     await apiSend(`/api/locacoes/${locacaoId}`, "PATCH", {
@@ -1309,21 +1370,51 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
   if (!loc) return <p>Carregando…</p>;
 
   const restante = Number(loc.valorTotal) - Number(loc.valorPago);
+  const locacaoCancelada = loc.statusLocacao === "CANCELADA";
+  const podeCancelarLocacao =
+    !loc.encerrada && !locacaoCancelada && (loc.statusLocacao ?? "ATIVA") === "ATIVA";
   const textoResumoAcessorios =
     (typeof loc.resumoAcessorios === "string" && loc.resumoAcessorios.trim().length > 0
       ? loc.resumoAcessorios.trim()
       : null) ?? formatarResumoAcessoriosLocacao(loc.itensDescritivos ?? []);
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div
+      className={
+        "space-y-8 max-w-4xl" +
+        (locacaoCancelada ? " rounded-2xl border-l-4 border-rose-400 pl-4 sm:pl-5" : "")
+      }
+    >
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Locação</h1>
+        <div className="flex flex-wrap items-center gap-2 gap-y-1">
+          <h1 className="text-2xl font-semibold text-foreground">Locação</h1>
+          {locacaoCancelada ? (
+            <span className="inline-flex items-center rounded-full border border-rose-300 bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-900">
+              Cancelada
+            </span>
+          ) : null}
+        </div>
         <p className="text-muted">{loc.cliente.nome}</p>
         <p className="text-sm text-muted mt-1">
           Aluguel em{" "}
           {new Date(loc.dataAluguel).toLocaleString("pt-BR")}{" "}
-          · {loc.encerrada ? "Encerrada" : "Em aberto"}
+          ·{" "}
+          {locacaoCancelada
+            ? "Cancelada"
+            : loc.encerrada
+              ? "Encerrada"
+              : "Em aberto"}
         </p>
+        {locacaoCancelada && loc.canceladaEm ? (
+          <p className="text-xs text-muted mt-1">
+            Cancelada em{" "}
+            {new Date(loc.canceladaEm).toLocaleString("pt-BR", {
+              dateStyle: "short",
+              timeStyle: "short",
+            })}
+            {loc.canceladaMotivo?.trim() ? ` · Motivo: ${loc.canceladaMotivo.trim()}` : ""}
+          </p>
+        ) : null}
         {textoResumoAcessorios ? (
           <p className="text-sm text-foreground mt-2 font-medium max-w-2xl">
             {textoResumoAcessorios}
@@ -1345,6 +1436,37 @@ export function LocacaoDetailPage({ id: idProp }: { id: string }) {
           <p>Restante: R$ {restante.toFixed(2)}</p>
         </div>
       </div>
+
+      {podeCancelarLocacao ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/80 dark:bg-rose-950/30 dark:border-rose-800 p-4 shadow-md space-y-3">
+          <h2 className="text-sm font-semibold text-rose-950 dark:text-rose-100">
+            Cancelar locação
+          </h2>
+          <p className="text-xs text-rose-900/90 dark:text-rose-200/90 leading-relaxed">
+            Use apenas se o aluguel não seguirá. Será gerado estorno do total já pago, os trajes
+            ficarão disponíveis e a operação fica registrada para auditoria.
+          </p>
+          <label className="block text-xs font-medium text-rose-900 dark:text-rose-100">
+            Motivo (opcional)
+          </label>
+          <textarea
+            className="input-field text-sm min-h-[72px] border-rose-200 focus:border-rose-400"
+            rows={2}
+            value={cancelMotivoDraft}
+            onChange={(e) => setCancelMotivoDraft(e.target.value)}
+            placeholder="Ex.: cliente desistiu; erro no cadastro…"
+            disabled={cancelando}
+          />
+          <button
+            type="button"
+            className="rounded-lg border border-rose-400 bg-rose-700 px-3 py-2 text-sm font-medium text-white hover:bg-rose-800 disabled:opacity-50"
+            disabled={cancelando}
+            onClick={() => void executarCancelarLocacao()}
+          >
+            {cancelando ? "Cancelando…" : "Cancelar locação"}
+          </button>
+        </div>
+      ) : null}
 
       {!loc.encerrada && (
         <form

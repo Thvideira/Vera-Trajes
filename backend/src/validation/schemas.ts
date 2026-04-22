@@ -133,6 +133,10 @@ export const locacaoPatchSchema = z.object({
   itensDescritivos: z.array(locacaoItemDescritivoLinha).optional(),
 });
 
+export const locacaoCancelarSchema = z.object({
+  motivo: z.string().max(2000).optional().nullable(),
+});
+
 export const validarIntervaloTrajesSchema = z.object({
   dataInicio: z.coerce.date(),
   trajeIds: z.array(z.string().min(1)).min(1),

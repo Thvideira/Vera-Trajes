@@ -57,12 +57,20 @@ enum PagamentoLocacaoStatus {
   PENDENTE
   PARCIAL
   PAGO
+  CANCELADA
 }
 
 enum TipoPagamentoRegistro {
   SINAL
   PARCIAL
   FINAL
+  /** Estorno financeiro ao cancelar a locação (valor = total já pago). */
+  ESTORNO_CANCELAMENTO
+}
+
+enum LocacaoStatus {
+  ATIVA
+  CANCELADA
 }
 
 enum MovimentacaoTipo {
@@ -142,6 +150,10 @@ model Locacao {
   dataEvento            DateTime?              @map("data_evento")
   dataDevolucaoPrevista DateTime?              @map("data_devolucao_prevista")
   encerrada             Boolean                @default(false)
+  statusLocacao         LocacaoStatus          @default(ATIVA) @map("status_locacao")
+  canceladaEm           DateTime?              @map("cancelada_em")
+  canceladaMotivo       String?                @map("cancelada_motivo")
+  canceladaPorUserId    String?                @map("cancelada_por_user_id")
   valorTotal            Decimal                @map("valor_total") @db.Decimal(12, 2)
   valorPago             Decimal                @default(0) @map("valor_pago") @db.Decimal(12, 2)
   statusPagamento       PagamentoLocacaoStatus @default(PENDENTE) @map("status_pagamento")
@@ -242,12 +254,14 @@ model LocacaoHistorico {
 }
 
 model Pagamento {
-  id        String                @id @default(cuid())
-  locacaoId String                @map("locacao_id")
-  locacao   Locacao               @relation(fields: [locacaoId], references: [id], onDelete: Cascade)
-  valor     Decimal               @db.Decimal(12, 2)
-  tipo      TipoPagamentoRegistro
-  createdAt DateTime              @default(now()) @map("created_at")
+  id         String                @id @default(cuid())
+  locacaoId  String                @map("locacao_id")
+  locacao    Locacao               @relation(fields: [locacaoId], references: [id], onDelete: Cascade)
+  valor      Decimal               @db.Decimal(12, 2)
+  tipo       TipoPagamentoRegistro
+  estornado  Boolean               @default(false) @map("estornado")
+  estornadoEm DateTime?            @map("estornado_em")
+  createdAt  DateTime              @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@map("pagamentos")

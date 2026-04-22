@@ -1,6 +1,7 @@
 import { AjusteStatus, AjusteTipo } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { assertLocacaoNaoCancelada } from "./locacao.service.js";
 import {
   recomputeTrajeLocado,
   syncRetiradaStatus,
@@ -34,6 +35,7 @@ export async function addAjuste(
     include: { retirada: { include: { locacao: true } } },
   });
   if (!tl) throw new AppError(404, "Traje locado não encontrado");
+  assertLocacaoNaoCancelada(tl.retirada.locacao);
   if (tl.retirada.locacao.encerrada) {
     throw new AppError(400, "Locação encerrada");
   }
