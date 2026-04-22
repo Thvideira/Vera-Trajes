@@ -2,8 +2,8 @@ export type TrajeTipo =
   | "VESTIDO"
   | "TERNO"
   | "SAPATO"
-  | "GRAVATA"
-  | "DAMINHA";
+  | "DAMINHA"
+  | "CALCA";
 
 export type TrajeLocadoStatus =
   | "COSTUREIRA"
@@ -23,8 +23,8 @@ export const LABEL_TRAJE_TIPO: Record<TrajeTipo, string> = {
   VESTIDO: "Vestido",
   TERNO: "Terno",
   SAPATO: "Sapato",
-  GRAVATA: "Gravata",
   DAMINHA: "Daminha",
+  CALCA: "Calça",
 };
 
 export const LABEL_TRAJE_LOCADO_STATUS: Record<TrajeLocadoStatus, string> = {

@@ -10,6 +10,7 @@ export async function getFinanceiroLocacaoDetalhe(locacaoId: string) {
     where: { id: locacaoId },
     include: {
       cliente: { select: { nome: true, telefone: true } },
+      itensDescritivos: { orderBy: { ordem: "asc" } },
       retiradas: {
         orderBy: { dataRetirada: "asc" },
         include: {
@@ -54,6 +55,12 @@ export async function getFinanceiroLocacaoDetalhe(locacaoId: string) {
         precisaLavagem: tl.precisaLavagem,
         lavagemStatus: tl.lavagemStatus,
       })),
+    })),
+    itensDescritivos: loc.itensDescritivos.map((i) => ({
+      id: i.id,
+      descricao: i.descricao,
+      variacao: i.variacao,
+      observacao: i.observacao,
     })),
   };
 }

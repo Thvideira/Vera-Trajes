@@ -51,6 +51,34 @@ export interface CreateLocacaoInput {
   valorTotal: Prisma.Decimal | string | number;
   valorPagoInicial?: Prisma.Decimal | string | number;
   retiradas: RetiradaCreateRaw[];
+  /** Itens sem código (acessórios), só texto na locação. */
+  itensDescritivos?: {
+    descricao: string;
+    variacao?: string | null;
+    observacao?: string | null;
+  }[];
+}
+
+export type ItemDescritivoNormalizado = {
+  descricao: string;
+  variacao: string | null;
+  observacao: string | null;
+};
+
+/** Linhas com descrição vazia após trim são descartadas. */
+export function normalizarItensDescritivos(
+  raw?: { descricao: string; variacao?: string | null; observacao?: string | null }[]
+): ItemDescritivoNormalizado[] {
+  if (!raw?.length) return [];
+  const out: ItemDescritivoNormalizado[] = [];
+  for (const row of raw) {
+    const descricao = row.descricao.trim();
+    if (!descricao) continue;
+    const variacao = row.variacao?.trim() ? row.variacao.trim() : null;
+    const observacao = row.observacao?.trim() ? row.observacao.trim() : null;
+    out.push({ descricao, variacao, observacao });
+  }
+  return out;
 }
 
 function parseDataRetirada(v: unknown): Date | null {
@@ -173,6 +201,7 @@ export async function createLocacao(input: CreateLocacaoInput) {
     }
 
     const statusPagamento = derivePaymentStatus(valorTotal, valorPagoInicial);
+    const itensDesc = normalizarItensDescritivos(input.itensDescritivos);
 
     const loc = await tx.locacao.create({
       data: {
@@ -183,6 +212,18 @@ export async function createLocacao(input: CreateLocacaoInput) {
         valorTotal,
         valorPago: valorPagoInicial,
         statusPagamento,
+        ...(itensDesc.length > 0
+          ? {
+              itensDescritivos: {
+                create: itensDesc.map((row, ordem) => ({
+                  descricao: row.descricao,
+                  variacao: row.variacao,
+                  observacao: row.observacao,
+                  ordem,
+                })),
+              },
+            }
+          : {}),
         retiradas: {
           create: retiradasValidas.map((r) => ({
             dataRetirada: r.dataRetirada,
@@ -265,6 +306,7 @@ export async function createLocacao(input: CreateLocacaoInput) {
         detalhe: {
           retiradasSalvas: retiradasValidas.length,
           trajes: allTrajes.length,
+          itensDescritivos: itensDesc.length,
         },
       },
     });
@@ -306,6 +348,7 @@ export async function listLocacoes(filters: {
     where: Object.keys(where).length > 0 ? where : undefined,
     include: {
       cliente: true,
+      itensDescritivos: { orderBy: { ordem: "asc" } },
       retiradas: {
         include: {
           trajesLocados: {
@@ -336,6 +379,7 @@ export async function getLocacao(id: string) {
     where: { id },
     include: {
       cliente: true,
+      itensDescritivos: { orderBy: { ordem: "asc" } },
       retiradas: {
         orderBy: { dataRetirada: "asc" },
         include: {
@@ -366,6 +410,11 @@ export async function patchLocacao(
     observacoes?: string | null;
     dataEvento?: Date | null;
     dataDevolucaoPrevista?: Date | null;
+    itensDescritivos?: {
+      descricao: string;
+      variacao?: string | null;
+      observacao?: string | null;
+    }[];
   }
 ) {
   const antes = await getLocacao(id);
@@ -378,32 +427,69 @@ export async function patchLocacao(
       });
     }
   }
-  const loc = await prisma.locacao.update({
-    where: { id },
-    data: {
-      ...(data.observacoes !== undefined ? { observacoes: data.observacoes } : {}),
-      ...(data.dataEvento !== undefined ? { dataEvento: data.dataEvento } : {}),
-      ...(data.dataDevolucaoPrevista !== undefined
-        ? { dataDevolucaoPrevista: data.dataDevolucaoPrevista }
-        : {}),
-    },
-    include: {
-      cliente: true,
-      retiradas: {
-        include: { trajesLocados: { include: { traje: true, ajustes: true } } },
-      },
-    },
+
+  const itensNovos =
+    data.itensDescritivos !== undefined
+      ? normalizarItensDescritivos(data.itensDescritivos)
+      : undefined;
+
+  const dadosLocacao: Prisma.LocacaoUpdateInput = {
+    ...(data.observacoes !== undefined ? { observacoes: data.observacoes } : {}),
+    ...(data.dataEvento !== undefined ? { dataEvento: data.dataEvento } : {}),
+    ...(data.dataDevolucaoPrevista !== undefined
+      ? { dataDevolucaoPrevista: data.dataDevolucaoPrevista }
+      : {}),
+  };
+  const temUpdateLocacao = Object.keys(dadosLocacao).length > 0;
+  const mudouItens = itensNovos !== undefined;
+
+  if (!temUpdateLocacao && !mudouItens) {
+    return getLocacao(id);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (temUpdateLocacao) {
+      await tx.locacao.update({ where: { id }, data: dadosLocacao });
+    }
+
+    if (mudouItens) {
+      await tx.locacaoItemDescritivo.deleteMany({ where: { locacaoId: id } });
+      if (itensNovos!.length > 0) {
+        await tx.locacaoItemDescritivo.createMany({
+          data: itensNovos!.map((row, ordem) => ({
+            locacaoId: id,
+            descricao: row.descricao,
+            variacao: row.variacao,
+            observacao: row.observacao,
+            ordem,
+          })),
+        });
+      }
+    }
   });
+
+  const loc = await getLocacao(id);
+
   await registrarHistorico(id, "Locação atualizada", {
     antes: {
       observacoes: antes.observacoes,
       dataEvento: antes.dataEvento,
       dataDevolucaoPrevista: antes.dataDevolucaoPrevista,
+      itensDescritivos: antes.itensDescritivos.map((i) => ({
+        descricao: i.descricao,
+        variacao: i.variacao,
+        observacao: i.observacao,
+      })),
     },
     depois: {
       observacoes: loc.observacoes,
       dataEvento: loc.dataEvento,
       dataDevolucaoPrevista: loc.dataDevolucaoPrevista,
+      itensDescritivos: loc.itensDescritivos.map((i) => ({
+        descricao: i.descricao,
+        variacao: i.variacao,
+        observacao: i.observacao,
+      })),
     },
   });
   return loc;

@@ -31,6 +31,18 @@ type Retirada = {
   trajesLocados: TrajeLocado[];
 };
 
+/** Peças sem código na locação (gravata, cinto, etc.). */
+type LocacaoItemDescritivo = {
+  id: string;
+  descricao: string;
+  variacao: string | null;
+  observacao: string | null;
+};
+
+function linhaItemDescritivoVazia() {
+  return { descricao: "", variacao: "", observacao: "" };
+}
+
 type LocacaoRow = {
   id: string;
   dataAluguel: string;
@@ -351,6 +363,7 @@ export function LocacaoNovaPage() {
   const [retiradas, setRetiradas] = useState<LinhaRetirada[]>([
     { dataRetirada: "", trajes: [{ trajeId: "", precisaLavagem: true, ajustes: [] }] },
   ]);
+  const [itensDescritivos, setItensDescritivos] = useState([linhaItemDescritivoVazia()]);
 
   useEffect(() => {
     void apiGet<Cliente[]>("/api/clientes").then(setClientes);
@@ -419,6 +432,17 @@ export function LocacaoNovaPage() {
     );
   }
 
+  function addLinhaItemDescritivo() {
+    setItensDescritivos((rows) => [...rows, linhaItemDescritivoVazia()]);
+  }
+
+  function removeLinhaItemDescritivo(index: number) {
+    setItensDescritivos((rows) => {
+      if (rows.length <= 1) return [linhaItemDescritivoVazia()];
+      return rows.filter((_, i) => i !== index);
+    });
+  }
+
   const temRetiradaVaziaNoFormulario = retiradas.some((r) =>
     retiradaLinhaEstaVazia(r)
   );
@@ -478,6 +502,13 @@ export function LocacaoNovaPage() {
             ajustes: t.ajustes.length ? t.ajustes : undefined,
           })),
         })),
+        itensDescritivos: itensDescritivos
+          .filter((r) => r.descricao.trim())
+          .map((r) => ({
+            descricao: r.descricao.trim(),
+            variacao: r.variacao.trim() || undefined,
+            observacao: r.observacao.trim() || undefined,
+          })),
       };
       await apiSend("/api/locacoes", "POST", payload);
       showPopup({
@@ -597,10 +628,98 @@ export function LocacaoNovaPage() {
           </div>
         </div>
 
+        <div className="space-y-4 border-t pt-4">
+          <div className="rounded-xl border border-line bg-pink-soft/40 p-4 space-y-3">
+            <div>
+              <h2 className="font-medium text-foreground">
+                Acessórios e peças sem código
+              </h2>
+              <p className="text-xs text-muted mt-1 leading-relaxed">
+                Itens que <strong>não</strong> têm identificação individual no estoque (gravata,
+                cinto, suspensório, etc.). Eles entram só como descrição nesta locação, separados
+                dos trajes com código, que você informa nas retiradas abaixo.
+              </p>
+            </div>
+            {itensDescritivos.map((row, idx) => (
+              <div
+                key={idx}
+                className="grid gap-2 sm:grid-cols-3 border rounded-lg p-3 bg-surface"
+              >
+                <div className="sm:col-span-1">
+                  <label className="block text-xs font-medium text-muted mb-1">
+                    O que é (tipo)
+                  </label>
+                  <input
+                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                    placeholder="Ex.: Gravata, Cinto"
+                    value={row.descricao}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setItensDescritivos((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, descricao: v } : r))
+                      );
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">
+                    Cor / modelo / variante
+                  </label>
+                  <input
+                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                    placeholder="Ex.: preto, infantil"
+                    value={row.variacao}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setItensDescritivos((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, variacao: v } : r))
+                      );
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">
+                    Observação (opcional)
+                  </label>
+                  <div className="flex gap-2 items-end">
+                    <input
+                      className="flex-1 min-w-0 rounded-lg border px-3 py-2 text-sm"
+                      placeholder="Notas extras"
+                      value={row.observacao}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setItensDescritivos((rows) =>
+                          rows.map((r, i) => (i === idx ? { ...r, observacao: v } : r))
+                        );
+                      }}
+                    />
+                    {itensDescritivos.length > 1 && (
+                      <button
+                        type="button"
+                        className="text-xs text-red-700 shrink-0 px-2 py-1.5 border border-red-200 rounded-lg hover:bg-red-50"
+                        onClick={() => removeLinhaItemDescritivo(idx)}
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-sm underline text-foreground"
+              onClick={addLinhaItemDescritivo}
+            >
+              + Outro acessório
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-6 border-t pt-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
             <div>
-              <span className="font-medium">Retiradas</span>
+              <span className="font-medium">Retiradas — trajes com código</span>
               {temRetiradaVaziaNoFormulario && (
                 <p className="text-xs text-warning-fg mt-1">
                   Retirada sem data ou sem traje será ignorada ao salvar.
@@ -849,6 +968,7 @@ type LocacaoDetalhe = {
   valorPago: string;
   statusPagamento: string;
   cliente: Cliente;
+  itensDescritivos: LocacaoItemDescritivo[];
   retiradas: Retirada[];
 };
 
@@ -865,6 +985,8 @@ export function LocacaoDetailPage({ id }: { id: string }) {
   const [novoTrajeRetirada, setNovoTrajeRetirada] = useState<Record<string, string>>(
     {}
   );
+  const [itensDescForm, setItensDescForm] = useState([linhaItemDescritivoVazia()]);
+  const [itensDescErr, setItensDescErr] = useState<string | null>(null);
 
   async function load() {
     const row = await apiGet<LocacaoDetalhe>(`/api/locacoes/${id}`);
@@ -883,7 +1005,48 @@ export function LocacaoDetailPage({ id }: { id: string }) {
       dr[r.id] = toDatetimeLocalValue(r.dataRetirada);
     }
     setDataRetiradaEdits(dr);
+    const idsc = loc.itensDescritivos ?? [];
+    setItensDescForm(
+      idsc.length > 0
+        ? idsc.map((i) => ({
+            descricao: i.descricao,
+            variacao: i.variacao ?? "",
+            observacao: i.observacao ?? "",
+          }))
+        : [linhaItemDescritivoVazia()]
+    );
+    setItensDescErr(null);
   }, [loc]);
+
+  async function salvarItensDescritivos(e: FormEvent) {
+    e.preventDefault();
+    setItensDescErr(null);
+    try {
+      await apiSend(`/api/locacoes/${id}`, "PATCH", {
+        itensDescritivos: itensDescForm
+          .filter((r) => r.descricao.trim())
+          .map((r) => ({
+            descricao: r.descricao.trim(),
+            variacao: r.variacao.trim() ? r.variacao.trim() : null,
+            observacao: r.observacao.trim() ? r.observacao.trim() : null,
+          })),
+      });
+      await load();
+    } catch (ex: unknown) {
+      setItensDescErr(ex instanceof Error ? ex.message : "Erro ao salvar");
+    }
+  }
+
+  function addLinhaItemDescForm() {
+    setItensDescForm((rows) => [...rows, linhaItemDescritivoVazia()]);
+  }
+
+  function removeLinhaItemDescForm(index: number) {
+    setItensDescForm((rows) => {
+      if (rows.length <= 1) return [linhaItemDescritivoVazia()];
+      return rows.filter((_, i) => i !== index);
+    });
+  }
 
   async function doAction(
     path: string,
@@ -1018,8 +1181,112 @@ export function LocacaoDetailPage({ id }: { id: string }) {
         </form>
       )}
 
+      <section className="rounded-2xl border border-line bg-surface p-4 shadow-md space-y-3">
+        <h2 className="text-lg font-medium text-foreground">Acessórios (sem código)</h2>
+        <p className="text-xs text-muted leading-relaxed">
+          Estes itens não aparecem no cadastro de trajes e não têm código de barras. São só
+          lembretes da locação (ex.: gravata azul). Os trajes identificados ficam na seção seguinte.
+        </p>
+        {loc.encerrada ? (
+          (loc.itensDescritivos ?? []).length === 0 ? (
+            <p className="text-sm text-muted">Nenhum acessório descritivo nesta locação.</p>
+          ) : (
+            <ul className="divide-y divide-line border border-line rounded-lg overflow-hidden">
+              {(loc.itensDescritivos ?? []).map((i) => (
+                <li key={i.id} className="p-3 text-sm bg-hover-gray/40">
+                  <span className="font-medium">{i.descricao}</span>
+                  {i.variacao ? (
+                    <span className="text-muted"> · {i.variacao}</span>
+                  ) : null}
+                  {i.observacao ? (
+                    <p className="text-xs text-muted mt-1">{i.observacao}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )
+        ) : (
+          <form onSubmit={salvarItensDescritivos} className="space-y-3">
+            {itensDescForm.map((row, idx) => (
+              <div
+                key={idx}
+                className="grid gap-2 sm:grid-cols-3 border rounded-lg p-3 bg-hover-gray/50"
+              >
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">
+                    Tipo / nome
+                  </label>
+                  <input
+                    className="input-field text-sm"
+                    placeholder="Ex.: Gravata"
+                    value={row.descricao}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setItensDescForm((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, descricao: v } : r))
+                      );
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">
+                    Cor / variante
+                  </label>
+                  <input
+                    className="input-field text-sm"
+                    placeholder="Ex.: preto"
+                    value={row.variacao}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setItensDescForm((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, variacao: v } : r))
+                      );
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">Observação</label>
+                  <div className="flex gap-2 items-end">
+                    <input
+                      className="input-field text-sm flex-1 min-w-0"
+                      value={row.observacao}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setItensDescForm((rows) =>
+                          rows.map((r, i) => (i === idx ? { ...r, observacao: v } : r))
+                        );
+                      }}
+                    />
+                    {itensDescForm.length > 1 && (
+                      <button
+                        type="button"
+                        className="text-xs text-red-700 shrink-0 px-2 py-1 border border-red-200 rounded-lg"
+                        onClick={() => removeLinhaItemDescForm(idx)}
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-2 items-center">
+              <button type="button" className="text-sm underline" onClick={addLinhaItemDescForm}>
+                + Linha
+              </button>
+              <button type="submit" className="btn-secondary text-sm">
+                Salvar lista de acessórios
+              </button>
+            </div>
+            {itensDescErr && (
+              <p className="text-sm text-red-600">{itensDescErr}</p>
+            )}
+          </form>
+        )}
+      </section>
+
       <section className="space-y-4">
-        <h2 className="text-lg font-medium text-foreground">Retiradas e trajes</h2>
+        <h2 className="text-lg font-medium text-foreground">Retiradas e trajes (com código)</h2>
         {loc.retiradas.map((r) => (
           <div
             key={r.id}

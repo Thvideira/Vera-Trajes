@@ -40,6 +40,12 @@ type Detalhe = {
       lavagemStatus: string;
     }[];
   }[];
+  itensDescritivos: {
+    id: string;
+    descricao: string;
+    variacao: string | null;
+    observacao: string | null;
+  }[];
 };
 
 export function FinanceiroLocacaoDetalhePage() {
@@ -69,7 +75,7 @@ export function FinanceiroLocacaoDetalhePage() {
     return <p className="text-muted">Carregando…</p>;
   }
 
-  const { locacao, cliente, retiradas } = data;
+  const { locacao, cliente, retiradas, itensDescritivos } = data;
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -168,8 +174,30 @@ export function FinanceiroLocacaoDetalhePage() {
         </p>
       </section>
 
+      <section className="rounded-2xl border border-line bg-surface p-5 shadow-md space-y-2">
+        <h2 className="font-medium text-foreground">Acessórios (sem código)</h2>
+        <p className="text-xs text-muted">
+          Itens só descritos na locação, sem identificação no estoque.
+        </p>
+        {itensDescritivos.length === 0 ? (
+          <p className="text-sm text-muted">Nenhum item deste tipo nesta locação.</p>
+        ) : (
+          <ul className="divide-y divide-line border border-line rounded-lg overflow-hidden text-sm">
+            {itensDescritivos.map((i) => (
+              <li key={i.id} className="p-3 bg-hover-gray/40">
+                <span className="font-medium">{i.descricao}</span>
+                {i.variacao ? <span className="text-muted"> · {i.variacao}</span> : null}
+                {i.observacao ? (
+                  <p className="text-xs text-muted mt-1">{i.observacao}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section className="space-y-4">
-        <h2 className="font-medium text-foreground">Retiradas e trajes</h2>
+        <h2 className="font-medium text-foreground">Retiradas e trajes (com código)</h2>
         {retiradas.map((r) => (
           <div
             key={r.id}

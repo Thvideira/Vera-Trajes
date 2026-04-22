@@ -59,6 +59,13 @@ const ajusteLinha = z.object({
   descricao: z.string().optional(),
 });
 
+/** Acessórios / itens sem código na locação (lista na própria locação). */
+export const locacaoItemDescritivoLinha = z.object({
+  descricao: z.string().min(1).max(200),
+  variacao: z.string().max(200).optional().nullable(),
+  observacao: z.string().max(500).optional().nullable(),
+});
+
 /** Entrada flexível: retiradas vazias/incompletas são descartadas no service */
 export const retiradaCreateLinha = z.object({
   dataRetirada: z.union([z.string(), z.coerce.date()]).optional(),
@@ -96,12 +103,15 @@ export const locacaoCreateSchema = z.object({
   valorTotal: z.coerce.number().positive(),
   valorPagoInicial: z.coerce.number().nonnegative().optional(),
   retiradas: z.array(retiradaCreateLinha).default([]),
+  itensDescritivos: z.array(locacaoItemDescritivoLinha).optional().default([]),
 });
 
 export const locacaoPatchSchema = z.object({
   observacoes: z.string().optional().nullable(),
   dataEvento: z.coerce.date().optional().nullable(),
   dataDevolucaoPrevista: z.coerce.date().optional().nullable(),
+  /** Se enviado, substitui toda a lista (use `[]` para limpar). */
+  itensDescritivos: z.array(locacaoItemDescritivoLinha).optional(),
 });
 
 export const validarIntervaloTrajesSchema = z.object({

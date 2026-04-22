@@ -61,6 +61,7 @@ export async function postCreate(req: Request, res: Response) {
     valorTotal: data.valorTotal,
     valorPagoInicial: data.valorPagoInicial,
     retiradas: data.retiradas,
+    itensDescritivos: data.itensDescritivos,
   });
   res.status(201).json(row);
 }

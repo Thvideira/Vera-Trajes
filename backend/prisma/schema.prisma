@@ -11,8 +11,8 @@ enum TrajeTipo {
   VESTIDO
   TERNO
   SAPATO
-  GRAVATA
   DAMINHA
+  CALCA
 }
 
 enum TrajeStatus {
@@ -153,10 +153,27 @@ model Locacao {
   notificacoes NotificacaoEnvio[]
   movimentacoes Movimentacao[]
   historico    LocacaoHistorico[]
+  /// Peças sem código (acessórios): só descrição na locação, separado de `Traje` / `TrajeLocado`.
+  itensDescritivos LocacaoItemDescritivo[]
 
   @@index([dataAluguel])
   @@index([encerrada])
   @@map("locacoes")
+}
+
+/// Item alugado sem identificação individual (gravata, cinto, etc.): não há `trajeId` nem código único.
+model LocacaoItemDescritivo {
+  id          String   @id @default(cuid())
+  locacaoId   String   @map("locacao_id")
+  locacao     Locacao  @relation(fields: [locacaoId], references: [id], onDelete: Cascade)
+  descricao   String   /// Ex.: Gravata, Cinto, Suspensório (tipo livre para novos acessórios)
+  variacao    String?  @map("variacao") /// Cor, modelo, tamanho (ex.: "preto", "infantil")
+  observacao  String?
+  ordem       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([locacaoId])
+  @@map("locacao_itens_descritivos")
 }
 
 model Retirada {
