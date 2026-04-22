@@ -2,7 +2,15 @@
 export const INTERVALO_MIN_DIAS_ENTRE_LOCACOES_TRAJE = 5;
 
 export const MENSAGEM_INTERVALO_TRAJE_LOCACAO =
-  "Este traje precisa de um intervalo mínimo de 5 dias entre locações";
+  "Este traje já possui uma locação próxima. É necessário um intervalo mínimo de 5 dias entre eventos.";
+
+/**
+ * Locações que ainda competem pelo traje (em aberto). Locações encerradas não entram na regra.
+ * Futuro: incluir `cancelada`/status operacional quando existir no schema.
+ */
+export function locacaoAtivaParaIntervaloTraje(loc: { encerrada: boolean }): boolean {
+  return !loc.encerrada;
+}
 
 export type LocacaoDatasParaIntervalo = {
   dataAluguel: Date;
@@ -44,6 +52,7 @@ export function violaIntervaloParaAlgumaLocacao(
   existentes: LocacaoDatasParaIntervalo[],
   minDias: number = INTERVALO_MIN_DIAS_ENTRE_LOCACOES_TRAJE
 ): boolean {
+  if (existentes.length === 0) return false;
   return existentes.some((e) =>
     violaIntervaloMinimoEntreLocacoes(novaDataReferencia, e, minDias)
   );

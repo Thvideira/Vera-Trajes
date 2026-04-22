@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   INTERVALO_MIN_DIAS_ENTRE_LOCACOES_TRAJE,
+  locacaoAtivaParaIntervaloTraje,
   violaIntervaloMinimoEntreLocacoes,
   violaIntervaloParaAlgumaLocacao,
 } from "../../src/utils/locacaoIntervaloTraje.js";
@@ -10,8 +11,21 @@ function d(ymd: string): Date {
   return new Date(Date.UTC(y, m - 1, day, 12, 0, 0));
 }
 
+describe("locacaoAtivaParaIntervaloTraje", () => {
+  it("considera ativa apenas locação em aberto (não encerrada)", () => {
+    expect(locacaoAtivaParaIntervaloTraje({ encerrada: false })).toBe(true);
+    expect(locacaoAtivaParaIntervaloTraje({ encerrada: true })).toBe(false);
+  });
+});
+
 describe("locacaoIntervaloTraje (dias de calendário UTC)", () => {
   const min = INTERVALO_MIN_DIAS_ENTRE_LOCACOES_TRAJE;
+
+  it("sem locações existentes não viola intervalo", () => {
+    expect(violaIntervaloParaAlgumaLocacao(d("2026-04-10"), [], min)).toBe(
+      false
+    );
+  });
 
   it("bloqueia nova locação a 2 dias da existente (só data de início)", () => {
     const existente = {

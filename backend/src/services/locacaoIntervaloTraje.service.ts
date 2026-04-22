@@ -8,7 +8,10 @@ import {
   violaIntervaloParaAlgumaLocacao,
 } from "../utils/locacaoIntervaloTraje.js";
 
-/** Locações distintas que já usaram este traje (qualquer retirada). */
+/**
+ * Locações ativas (em aberto) que já usam este traje.
+ * Locações encerradas não entram na regra de intervalo — o traje já não está comprometido por elas.
+ */
 export async function listarDatasLocacoesPorTraje(
   db: Pick<PrismaClient, "trajeLocado">,
   trajeId: string,
@@ -18,9 +21,10 @@ export async function listarDatasLocacoesPorTraje(
     where: {
       trajeId,
       retirada: {
-        locacao: excludeLocacaoId
-          ? { id: { not: excludeLocacaoId } }
-          : undefined,
+        locacao: {
+          encerrada: false,
+          ...(excludeLocacaoId ? { id: { not: excludeLocacaoId } } : {}),
+        },
       },
     },
     select: {
@@ -64,6 +68,9 @@ export async function assertTrajeIntervaloMinimoLocacoes(
     trajeId,
     opts?.excludeLocacaoId
   );
+  if (existentes.length === 0) {
+    return;
+  }
   if (
     violaIntervaloParaAlgumaLocacao(
       dataInicio,
