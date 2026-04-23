@@ -4,10 +4,6 @@ import {
 } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
-function tipoEhEstorno(tipo: TipoPagamentoRegistro): boolean {
-  return tipo === TipoPagamentoRegistro.ESTORNO_CANCELAMENTO;
-}
-
 const HISTORICO_LIMITE_PADRAO = 500;
 
 /**
@@ -18,7 +14,6 @@ function inferirSituacaoAposPagamento(
   tipo: TipoPagamentoRegistro,
   statusLocacaoAtual: PagamentoLocacaoStatus
 ): PagamentoLocacaoStatus {
-  if (tipoEhEstorno(tipo)) return PagamentoLocacaoStatus.CANCELADA;
   if (tipo === TipoPagamentoRegistro.FINAL) return PagamentoLocacaoStatus.PAGO;
   if (tipo === TipoPagamentoRegistro.PARCIAL) {
     return PagamentoLocacaoStatus.PARCIAL;

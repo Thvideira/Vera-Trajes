@@ -146,15 +146,6 @@ function coletarTrajeIds(retiradas: RetiradaInput[]): string[] {
   return ids;
 }
 
-export function assertLocacaoNaoCancelada(
-  loc: { statusLocacao: LocacaoStatus } | null | undefined,
-  mensagem = "Operação não permitida: locação cancelada"
-): void {
-  if (loc?.statusLocacao === LocacaoStatus.CANCELADA) {
-    throw new AppError(400, mensagem);
-  }
-}
-
 async function assertTrajeLivreNaLocacao(
   locacaoId: string,
   trajeId: string,
@@ -462,7 +453,6 @@ export async function patchLocacao(
   }
 ) {
   const antes = await getLocacao(id);
-  assertLocacaoNaoCancelada(antes);
   if (data.dataEvento !== undefined) {
     const novoRef =
       data.dataEvento === null ? antes.dataAluguel : data.dataEvento;
@@ -556,7 +546,6 @@ export async function patchLocacaoItemDescritivoSeparado(
     select: { encerrada: true, statusLocacao: true },
   });
   if (!loc) throw new AppError(404, "Locação não encontrada");
-  assertLocacaoNaoCancelada(loc);
   if (loc.encerrada) {
     throw new AppError(400, "Locação encerrada: não é possível alterar acessórios");
   }
@@ -575,7 +564,6 @@ export async function patchLocacaoItemDescritivoSeparado(
 
 export async function addRetirada(locacaoId: string, input: RetiradaInput) {
   const locacao = await getLocacao(locacaoId);
-  assertLocacaoNaoCancelada(locacao);
   if (!input.trajes.length) throw new AppError(400, "Retirada sem trajes");
 
   for (const t of input.trajes) {
@@ -675,7 +663,6 @@ export async function patchRetirada(
     include: { locacao: true },
   });
   if (!ret) throw new AppError(404, "Retirada não encontrada");
-  assertLocacaoNaoCancelada(ret.locacao);
 
   const antes = ret.dataRetirada;
   const updated = await prisma.retirada.update({
@@ -696,7 +683,6 @@ export async function deleteRetirada(retiradaId: string) {
     include: { trajesLocados: true, locacao: true },
   });
   if (!ret) throw new AppError(404, "Retirada não encontrada");
-  assertLocacaoNaoCancelada(ret.locacao);
   if (ret.trajesLocados.length > 0) {
     throw new AppError(400, "Remova os trajes desta retirada antes de excluí-la");
   }
@@ -717,7 +703,6 @@ export async function addTrajeLocado(
     include: { locacao: true },
   });
   if (!ret) throw new AppError(404, "Retirada não encontrada");
-  assertLocacaoNaoCancelada(ret.locacao);
   if (ret.locacao.encerrada) {
     throw new AppError(400, "Locação encerrada");
   }
@@ -793,7 +778,6 @@ export async function removeTrajeLocado(trajeLocadoId: string) {
     include: { retirada: { include: { locacao: true } } },
   });
   if (!tl) throw new AppError(404, "Registro não encontrado");
-  assertLocacaoNaoCancelada(tl.retirada.locacao);
   if (tl.retirada.locacao.encerrada) {
     throw new AppError(400, "Locação encerrada");
   }
@@ -1123,7 +1107,6 @@ export async function registrarPagamento(
   tipo: TipoPagamentoRegistro
 ) {
   const loc = await getLocacao(locacaoId);
-  assertLocacaoNaoCancelada(loc, "Não é possível registrar pagamento em locação cancelada");
   const v = new Prisma.Decimal(valor);
   if (v.lte(0)) throw new AppError(400, "Valor inválido");
 
@@ -1156,7 +1139,6 @@ export async function registrarPagamentoPorValorPago(
   valorPagoRegistro: number
 ) {
   const loc = await getLocacao(locacaoId);
-  assertLocacaoNaoCancelada(loc, "Não é possível registrar pagamento em locação cancelada");
   const rem = computeRemaining(loc.valorTotal, loc.valorPago);
   const v = new Prisma.Decimal(Number(valorPagoRegistro).toFixed(2));
   if (v.lte(0)) {
@@ -1169,121 +1151,6 @@ export async function registrarPagamentoPorValorPago(
     ? TipoPagamentoRegistro.FINAL
     : TipoPagamentoRegistro.PARCIAL;
   return registrarPagamento(locacaoId, v, tipo);
-}
-
-/**
- * Cancela a locação: status CANCELADA, zera receita reconhecida na locação, marca pagamentos
- * anteriores como estornados, cria lançamento ESTORNO_CANCELAMENTO, libera trajes e registra histórico.
- */
-export async function cancelarLocacao(
-  locacaoId: string,
-  opts: { motivo?: string | null; adminUserId?: string | null }
-) {
-  const agora = new Date();
-
-  await prisma.$transaction(async (tx) => {
-    const loc = await tx.locacao.findUnique({
-      where: { id: locacaoId },
-      include: {
-        pagamentos: true,
-        retiradas: { include: { trajesLocados: true } },
-      },
-    });
-    if (!loc) throw new AppError(404, "Locação não encontrada");
-    if (loc.statusLocacao === LocacaoStatus.CANCELADA) {
-      throw new AppError(400, "Locação já está cancelada");
-    }
-    if (loc.encerrada) {
-      throw new AppError(
-        400,
-        "Não é possível cancelar uma locação já encerrada (todos os trajes foram finalizados)"
-      );
-    }
-
-    const trajeIds = [
-      ...new Set(
-        loc.retiradas.flatMap((r) => r.trajesLocados.map((tl) => tl.trajeId))
-      ),
-    ];
-
-    const pagamentosAtivos = loc.pagamentos.filter(
-      (p) =>
-        !p.estornado && p.tipo !== TipoPagamentoRegistro.ESTORNO_CANCELAMENTO
-    );
-    const totalPago = pagamentosAtivos.reduce(
-      (acc, p) => acc.plus(p.valor),
-      new Prisma.Decimal(0)
-    );
-
-    if (pagamentosAtivos.length > 0) {
-      await tx.pagamento.updateMany({
-        where: {
-          locacaoId,
-          estornado: false,
-          tipo: { not: TipoPagamentoRegistro.ESTORNO_CANCELAMENTO },
-        },
-        data: { estornado: true, estornadoEm: agora },
-      });
-    }
-
-    if (totalPago.gt(0)) {
-      await tx.pagamento.create({
-        data: {
-          locacaoId,
-          valor: totalPago,
-          tipo: TipoPagamentoRegistro.ESTORNO_CANCELAMENTO,
-        },
-      });
-    }
-
-    await tx.locacao.update({
-      where: { id: locacaoId },
-      data: {
-        statusLocacao: LocacaoStatus.CANCELADA,
-        encerrada: true,
-        canceladaEm: agora,
-        canceladaMotivo: opts.motivo?.trim() ? opts.motivo.trim() : null,
-        canceladaPorUserId: opts.adminUserId?.trim()
-          ? opts.adminUserId.trim()
-          : null,
-        valorPago: new Prisma.Decimal(0),
-        statusPagamento: PagamentoLocacaoStatus.CANCELADA,
-      },
-    });
-
-    if (trajeIds.length > 0) {
-      await tx.traje.updateMany({
-        where: { id: { in: trajeIds } },
-        data: { status: TrajeStatus.DISPONIVEL },
-      });
-      for (const tid of trajeIds) {
-        await tx.movimentacao.create({
-          data: {
-            trajeId: tid,
-            locacaoId,
-            tipo: MovimentacaoTipo.ENTRADA_DEVOLUCAO,
-            observacao: "Devolução ao cancelamento da locação",
-          },
-        });
-      }
-    }
-
-    await tx.locacaoHistorico.create({
-      data: {
-        locacaoId,
-        acao: "Locação cancelada",
-        detalhe: {
-          motivo: opts.motivo?.trim() ?? null,
-          adminUserId: opts.adminUserId ?? null,
-          valorEstornado: totalPago.toFixed(2),
-          trajesLiberados: trajeIds,
-          pagamentosMarcadosEstorno: pagamentosAtivos.map((p) => p.id),
-        },
-      },
-    });
-  });
-
-  return getLocacao(locacaoId);
 }
 
 /**
@@ -1315,7 +1182,6 @@ export async function listarPagamentosPendentes() {
 export async function relatorioFinanceiro(filters: { inicio?: Date; fim?: Date }) {
   const locs = await prisma.locacao.findMany({
     where: {
-      statusLocacao: { not: LocacaoStatus.CANCELADA },
       ...(filters.inicio || filters.fim
         ? {
             dataAluguel: {

@@ -13,6 +13,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:reconcile-history": "prisma db execute --file prisma/reconcile-migration-history.sql --schema prisma/schema.prisma",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "reset:locacoes": "tsx prisma/reset-locacoes.ts",

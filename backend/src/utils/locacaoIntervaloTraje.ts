@@ -6,7 +6,6 @@ export const MENSAGEM_INTERVALO_TRAJE_LOCACAO =
 
 /**
  * Locações que ainda competem pelo traje (em aberto). Locações encerradas não entram na regra.
- * Futuro: incluir `cancelada`/status operacional quando existir no schema.
  */
 export function locacaoAtivaParaIntervaloTraje(loc: { encerrada: boolean }): boolean {
   return !loc.encerrada;

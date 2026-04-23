@@ -99,7 +99,10 @@ Suba a API:
 npm run dev
 ```
 
-Deve aparecer algo como: `API em http://localhost:4000`.
+No terminal do backend deve aparecer, entre outras coisas:
+
+- `API em http://localhost:4000 (rede local: use o IP desta máquina na porta 4000)` — servidor ouvindo em `PORT` (padrão **4000**); em outro aparelho na mesma Wi‑Fi use `http://<IP-do-computador>:4000`.
+- `[cron] Job diário de WhatsApp registrado (0 8 * * *)` — agendamento diário (8h) quando `CRON_ENABLED=true` no `.env` (como no [`.env.example`](backend/.env.example)).
 
 **Teste rápido:** no navegador ou no terminal:
 
