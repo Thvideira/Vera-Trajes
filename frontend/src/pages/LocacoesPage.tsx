@@ -148,7 +148,10 @@ function TrajeThumb({
       <button
         type="button"
         disabled={!clickable}
-        onClick={() => fotoUrl && onOpenPreview?.(fotoUrl)}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (fotoUrl) onOpenPreview?.(fotoUrl);
+        }}
         className={`shrink-0 rounded-lg border border-line bg-hover-gray overflow-hidden ${sizeClass} flex items-center justify-center ${
           clickable ? "cursor-zoom-in hover:ring-2 hover:ring-primary/35" : "cursor-default"
         }`}
@@ -248,6 +251,7 @@ function persistFiltroSituacaoLocacoes(value: string) {
 }
 
 export function LocacoesPage() {
+  const navigate = useNavigate();
   const [list, setList] = useState<LocacaoRow[]>([]);
   const [filtroEncerrada, setFiltroEncerrada] = useState(() =>
     readStoredFiltroSituacaoLocacoes()
@@ -358,7 +362,8 @@ export function LocacoesPage() {
                 return (
                   <tr
                     key={l.id}
-                    className="border-b border-line align-top transition-colors hover:bg-pink-soft"
+                    className="border-b border-line align-top transition-colors hover:bg-pink-soft cursor-pointer"
+                    onClick={() => navigate(`/locacoes/${l.id}`)}
                   >
                     <td className="p-3">{l.cliente.nome}</td>
                     <td className="p-3 whitespace-nowrap">
@@ -414,6 +419,7 @@ export function LocacoesPage() {
                       <Link
                         to={`/locacoes/${l.id}`}
                         className="text-primary font-medium underline underline-offset-2 hover:text-primary-hover"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         Abrir
                       </Link>
