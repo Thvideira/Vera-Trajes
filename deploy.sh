@@ -12,8 +12,10 @@ cd "$ROOT"
 # Só build + .tar, sem SSH:
 #   SKIP_REMOTE=1 ./deploy.sh 1.2.3
 #
-#SERVER_HOST="10.20.30.231"
-SERVER_HOST="${SERVER_HOST:-207.244.252.170}"
+# IP por defeito: 192.168.1.200 (ajuste a sub-rede ou defina no env):
+#   SERVER_HOST="10.20.30.231" ./deploy.sh 1.0.0
+#   SERVER_HOST=207.244.252.170 ./deploy.sh 1.0.0
+SERVER_HOST="${SERVER_HOST:-192.168.1.200}"
 SERVER_USER="${SERVER_USER:-root}"
 SSH_PORT="${SSH_PORT:-22}"
 SSH_OPTS=(

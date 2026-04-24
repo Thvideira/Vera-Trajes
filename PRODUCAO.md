@@ -1,5 +1,7 @@
 # Loja Vera — produção (Docker / Swarm)
 
+- **Build e envio de imagens** (Swarm), por defeito para o host `192.168.1.200`: na raiz, `./deploy.sh 1.0.0` (ou `SERVER_HOST=10.x.x.200` se a tua sub-rede for outra; `SKIP_REMOTE=1` só gera `.tar` locais). Ver [deploy.sh](deploy.sh).
+
 ## 1) Ver a UI e a API a partir de um teu portátil
 
 - Defina a URL pública (por defeito a app em [vera-store.cetara.dev.br](https://vera-store.cetara.dev.br/)) e execute na raiz do repositório:
