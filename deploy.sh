@@ -90,6 +90,7 @@ fi
 echo "==> Enviando arquivos para o servidor"
 scp "${SSH_OPTS[@]}" -P "${SSH_PORT}" "${API_TAR}" "${WEB_TAR}" "${SERVER_USER}@${SERVER_HOST}:${REMOTE_DIR}/"
 scp "${SSH_OPTS[@]}" -P "${SSH_PORT}" "${ROOT}/docker-stack.yml" "${SERVER_USER}@${SERVER_HOST}:${REMOTE_DIR}/docker-stack.yml"
+scp "${SSH_OPTS[@]}" -P "${SSH_PORT}" "${ROOT}/deploy/.env" "${SERVER_USER}@${SERVER_HOST}:${REMOTE_DIR}/.env"
 
 echo "==> Carregando imagens e publicando stack no servidor"
 # Heredoc sem aspas: REMOTE_DIR, VERSION, etc. expandem no ambiente local antes de enviar ao SSH.
@@ -115,6 +116,7 @@ cd "${REMOTE_DIR}"
 docker load -i "${API_TAR_BN}"
 docker load -i "${WEB_TAR_BN}"
 
+set -a; source "${REMOTE_DIR}/.env"; set +a
 export APP_VERSION="${VERSION}"
 cd "${REMOTE_DIR}" && docker stack deploy -c docker-stack.yml "${STACK_NAME}"
 docker stack services "${STACK_NAME}"

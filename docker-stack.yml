@@ -21,8 +21,25 @@ services:
 
   api:
     image: "vera-trajes-api:${APP_VERSION:-latest}"
-    env_file:
-      - .env
+    environment:
+      - DATABASE_URL
+      - PORT
+      - NODE_ENV
+      - JWT_SECRET
+      - JWT_EXPIRES_IN
+      - CORS_ORIGIN
+      - PUBLIC_BASE_URL
+      - UPLOAD_MODE
+      - UPLOAD_LOCAL_DIR
+      - AUTH_DISABLED
+      - CRON_ENABLED
+      - CLOUDINARY_CLOUD_NAME
+      - CLOUDINARY_API_KEY
+      - CLOUDINARY_API_SECRET
+      - CLOUDINARY_FOLDER
+      - WHATSAPP_TOKEN
+      - WHATSAPP_PHONE_NUMBER_ID
+      - WHATSAPP_API_VERSION
     networks:
       - vera-trajes-network
     volumes:
