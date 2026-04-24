@@ -14,3 +14,6 @@ cypress/videos/
 # Testes
 coverage/
 .env.test
+
+# Deploy (imagens + .tar)
+.artifacts/
