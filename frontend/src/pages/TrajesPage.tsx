@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError, apiGet, apiSend, apiUploadFoto } from "../lib/api";
+import { formatarNomeTraje } from "../lib/formatarNomeTraje";
 import { confirmAsync, showPopup } from "../contexts/PopupContext";
 import { isAdminUser, isMobileUser } from "../lib/auth";
 import {
@@ -270,13 +271,15 @@ export function TrajeFormPage({ id }: { id?: string }) {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setErr(null);
+    const payload = { ...form, nome: formatarNomeTraje(form.nome) };
+    setForm(payload);
     try {
       let trajeId = id;
       if (isNew) {
-        const created = await apiSend<Traje>("/api/trajes", "POST", form);
+        const created = await apiSend<Traje>("/api/trajes", "POST", payload);
         trajeId = created.id;
       } else {
-        await apiSend(`/api/trajes/${id}`, "PUT", form);
+        await apiSend(`/api/trajes/${id}`, "PUT", payload);
       }
       const hadFoto = Boolean(fotoFile && trajeId);
       if (fotoFile && trajeId) {
@@ -368,6 +371,9 @@ export function TrajeFormPage({ id }: { id?: string }) {
             className="w-full rounded-lg border border-line px-3 py-2"
             value={form.nome}
             onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+            onBlur={() =>
+              setForm((f) => ({ ...f, nome: formatarNomeTraje(f.nome) }))
+            }
           />
         </div>
         <div>

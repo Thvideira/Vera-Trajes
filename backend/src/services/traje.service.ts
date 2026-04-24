@@ -1,6 +1,7 @@
 import type { Prisma, TrajeTipo } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { formatarNomeTraje } from "../utils/formatarNomeTraje.js";
 import { deleteTrajeImageIfLocal } from "./upload.service.js";
 
 export async function listTrajes(filters: {
@@ -36,15 +37,19 @@ export async function getTraje(id: string) {
 
 export async function createTraje(data: Prisma.TrajeCreateInput) {
   const codigo = data.codigo.trim().toLowerCase();
+  const nome = formatarNomeTraje(String(data.nome));
   const exists = await prisma.traje.findUnique({ where: { codigo } });
   if (exists) throw new AppError(409, "Código já utilizado");
   return prisma.traje.create({
-    data: { ...data, codigo },
+    data: { ...data, codigo, nome },
   });
 }
 
 export async function updateTraje(id: string, data: Prisma.TrajeUpdateInput) {
   await getTraje(id);
+  if (typeof data.nome === "string") {
+    data.nome = formatarNomeTraje(data.nome);
+  }
   if (data.codigo && typeof data.codigo === "string") {
     const codigo = data.codigo.trim().toLowerCase();
     data.codigo = codigo;
