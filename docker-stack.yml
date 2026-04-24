@@ -32,8 +32,6 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
-      depends_on:
-        - postgres
 
   web:
     image: "vera-trajes-web:${APP_VERSION:-latest}"
@@ -45,8 +43,6 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
-      depends_on:
-        - api
     labels:
       - traefik.enable=true
       - traefik.docker.network=main_network
