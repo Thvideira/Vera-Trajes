@@ -161,6 +161,10 @@ Os dados ficam no volume Docker até você apagar o volume ou rodar `docker comp
 
 ---
 
+## Produção (Docker / domínio)
+
+Checklist, `.env` no servidor, verificação com `curl` e stack Swarm: ver **[PRODUCAO.md](PRODUCAO.md)**. Modelo de variáveis: [deploy/.env.production.example](deploy/.env.production.example).
+
 ## Estrutura útil
 
 - `backend/.env` — variáveis secretas (não commitar). Use `.env.example` como modelo.
