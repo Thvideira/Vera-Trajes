@@ -1,16 +1,30 @@
-version: "3.8"
-
-# Variavel de ambiente exigida no deploy: APP_VERSION (ex.: 1.0.0) — o deploy.sh define.
-# Crie o ficheiro .env neste diretorio no servidor (junto a este YAML), com base em backend/.env.example:
-#   DATABASE_URL, JWT_SECRET, CORS_ORIGIN, PUBLIC_BASE_URL, UPLOAD_*, etc.
-
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      TZ: America/Sao_Paulo
+      PG_TZ: America/Sao_Paulo
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      POSTGRES_DB: "${POSTGRES_DB:-vera-trajes}"
+    volumes:
+      - vera_trajes_pgdata:/var/lib/postgresql/data
+    networks:
+      - vera-trajes-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
   api:
     image: "vera-trajes-api:${APP_VERSION:-latest}"
     env_file:
       - .env
     networks:
-      - main_network
+      - vera-trajes-network
     volumes:
       - vera_trajes_uploads:/app/uploads
     deploy:
@@ -18,22 +32,39 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+      depends_on:
+        - postgres
 
   web:
     image: "vera-trajes-web:${APP_VERSION:-latest}"
     networks:
       - main_network
-    ports:
-      - "80:80"
+      - vera-trajes-network
     deploy:
       mode: replicated
       replicas: 1
       restart_policy:
         condition: on-failure
+      depends_on:
+        - api
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=main_network
+      - traefik.http.middlewares.redirect-https.redirectscheme.scheme=https
+      - traefik.http.middlewares.redirect-https.redirectscheme.permanent=true
+      - traefik.http.routers.vera-trajes-web-https.service=vera-trajes-web
+      - traefik.http.routers.vera-trajes-web-https.rule=Host(`vera-store.cetara.dev.br`)
+      - traefik.http.routers.vera-trajes-web-https.entrypoints=websecure
+      - traefik.http.routers.vera-trajes-web-https.tls.certresolver=letsencryptresolver
+      - traefik.http.routers.vera-trajes-web-https.tls=true
+      - traefik.http.routers.vera-trajes-web-https.priority=1
+      - traefik.http.services.vera-trajes-web.loadbalancer.server.port=80
 
 volumes:
   vera_trajes_uploads:
+  vera_trajes_pgdata:
 
 networks:
+  vera-trajes-network:
   main_network:
     external: true
